@@ -30,6 +30,10 @@ import java.time.LocalDateTime;
                         // maps this entity to the "measurements" table
 @Table(name = "measurements", indexes = {
         @Index(name = "idx_measurement_station_time", columnList = "station_id, timestamp")
+
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_measurement_station_time_pollutant",
+                columnNames = {"station_id", "timestamp", "pollutant"})
 })
 public class Measurement {
 
