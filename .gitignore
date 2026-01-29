@@ -17,3 +17,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# zip files
+/backend/src/main/java/com/aerogrid/*.zip

@@ -10,6 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.locationtech.jts.geom.Point;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Entity representing an air quality monitoring station.
@@ -35,9 +36,18 @@ public class Station {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Official or unique code identifier for the station. Codes that start with "AG-" are stations from users,
+     * all the other codes are official*/
+    @Column(unique = true, nullable = false)
+    private String code;
+
     /** Display name of the station */
     @Column(nullable = false)
     private String name;
+
+    /** Municipality where the station is located */
+    @Column(nullable = false)
+    private String municipality;
 
     /** Geographic location of the station using WGS84 coordinate system (SRID 4326) */
     @Column(columnDefinition = "geometry(Point, 4326)", nullable = false)
@@ -49,12 +59,14 @@ public class Station {
     private SourceType sourceType;
 
     /** Community trust score based on user votes */
+    @Builder.Default
     @Column(nullable = false)
-    private int trustScore;
+    private int trustScore = 0;
 
     /** Whether the station is currently active and collecting data */
+    @Builder.Default
     @Column(nullable = false)
-    private Boolean isActive;
+    private Boolean isActive = true;
 
     /** The user who owns this station (null for official stations) */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -68,4 +80,15 @@ public class Station {
     /** Timestamp when the station was last updated */
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    /**
+     * Generates a unique code for citizen stations if not provided.
+     * Official stations must have their code set explicitly.
+     */
+    @PrePersist
+    public void generateCodeIfMissing() {
+        if (this.sourceType == SourceType.CITIZEN && (this.code == null || this.code.isEmpty())) {
+            this.code = "AG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+    }
 }

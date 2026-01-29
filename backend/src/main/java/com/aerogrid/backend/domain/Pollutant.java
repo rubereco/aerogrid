@@ -19,5 +19,8 @@ public enum Pollutant {
     /** Carbon Monoxide */
     CO,
     /** Sulfur Dioxide */
-    SO2
+    SO2,
+    H2S,
+    C6H6,
+    PM1
 }
