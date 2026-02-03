@@ -20,7 +20,7 @@ public interface DataImportProvider {
     void importStations();
 
     /**
-     * Imports current measurements (typically for the current day).
+     * Imports current measurements (for the current day).
      */
     void importMeasurements();
 

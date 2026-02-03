@@ -2,6 +2,7 @@ package com.aerogrid.backend.ingestion;
 
 import com.aerogrid.backend.ingestion.common.DataImportProvider;
 import com.aerogrid.backend.repository.MeasurementRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,6 +19,70 @@ public class DataIngestionFacade {
 
     private final List<DataImportProvider> providers;
     private final MeasurementRepository measurementRepository;
+
+
+    @PostConstruct
+    public void onStartup() {
+
+        log.info("Initializing data ingestion on startup...");
+
+        // Import stations first
+        for (DataImportProvider provider : providers) {
+            try {
+                provider.importStations();
+            } catch (Exception e) {
+                log.error("Error importing stations for provider {}: {}", provider.getProviderName(), e.getMessage());
+            }
+        }
+
+        // Check most recent measurement and import missing data
+        LocalDateTime mostRecentMeasurement = measurementRepository.findLatestTimestamp();
+        LocalDate today = LocalDate.now();
+
+        if (mostRecentMeasurement != null) {
+            LocalDate lastMeasurementDate = mostRecentMeasurement.toLocalDate();
+            log.info("Most recent measurement date: {}, Today: {}", lastMeasurementDate, today);
+
+            if (lastMeasurementDate.equals(today)) {
+                // Only import today
+                log.info("Importing today's data...");
+                for (DataImportProvider provider : providers) {
+                    try {
+                        provider.importMeasurements(today);
+                    } catch (Exception e) {
+                        log.error("Error importing today's data for provider {}: {}", provider.getProviderName(), e.getMessage());
+                    }
+                }
+            } else {
+                // Import from lastMeasurementDate to today (inclusive)
+                log.info("Importing data from {} to {}", lastMeasurementDate, today);
+                LocalDate currentDate = lastMeasurementDate;
+                while (!currentDate.isAfter(today)) {
+                    LocalDate dateToImport = currentDate;
+                    log.info("Importing data for date: {}", dateToImport);
+                    for (DataImportProvider provider : providers) {
+                        try {
+                            provider.importMeasurements(dateToImport);
+                        } catch (Exception e) {
+                            log.error("Error importing data for {} from provider {}: {}", dateToImport, provider.getProviderName(), e.getMessage());
+                        }
+                    }
+                    currentDate = currentDate.plusDays(1);
+                }
+            }
+        } else {
+            // No measurements in database, import today
+            log.info("No measurements found in database. Importing today's data...");
+            for (DataImportProvider provider : providers) {
+                try {
+                    provider.importMeasurements(today);
+                } catch (Exception e) {
+                    log.error("Error importing today's data for provider {}: {}", provider.getProviderName(), e.getMessage());
+                }
+            }
+        }
+
+    }
 
     /**
      * This method will execute automatically every hour.
