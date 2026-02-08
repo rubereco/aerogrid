@@ -9,6 +9,7 @@ import com.aerogrid.backend.ingestion.common.CommonStationDto;
 import com.aerogrid.backend.ingestion.common.DataImportProvider;
 import com.aerogrid.backend.repository.MeasurementRepository;
 import com.aerogrid.backend.repository.StationRepository;
+import com.aerogrid.backend.service.AqiCalculatorService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class GencatImportService implements DataImportProvider {
     private final CommonMapper commonMapper;
     private final StationRepository stationRepository;
     private final MeasurementRepository measurementRepository;
+    private final AqiCalculatorService aqiCalculatorService;
     private final Map<String, Station> stationCache = new HashMap<>();
     private int newStation = 0;
     private int newMeasurement = 0;
@@ -34,12 +36,14 @@ public class GencatImportService implements DataImportProvider {
     public GencatImportService(GencatApiClient apiClient, GencatMapper mapper,
                                CommonMapper commonMapper,
                                StationRepository stationRepository,
-                               MeasurementRepository measurementRepository) {
+                               MeasurementRepository measurementRepository,
+                               AqiCalculatorService aqiCalculatorService) {
         this.apiClient = apiClient;
         this.mapper = mapper;
         this.commonMapper = commonMapper;
         this.stationRepository = stationRepository;
         this.measurementRepository = measurementRepository;
+        this.aqiCalculatorService = aqiCalculatorService;
     }
 
 
@@ -138,7 +142,7 @@ public class GencatImportService implements DataImportProvider {
                     pollutant.name(),
                     dto.getValue(),
                     dto.getTimestamp(),
-                    null
+                    aqiCalculatorService.calculateAqi(pollutant.name(), dto.getValue())
             );
             newMeasurement++;
 
