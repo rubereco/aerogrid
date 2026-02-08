@@ -72,7 +72,7 @@ public class CommonMapper {
      * It only returns values for the pollutants we are interested in.
      * Others return null.
      */
-    private Pollutant mapPollutantString(String raw) {
+    public Pollutant mapPollutantString(String raw) {
         if (raw == null) return null;
 
         String clean = raw.trim().toUpperCase();

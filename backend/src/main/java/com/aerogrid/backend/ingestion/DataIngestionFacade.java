@@ -130,7 +130,7 @@ public class DataIngestionFacade {
                 try {
                     provider.importMeasurements(targetDate);
 
-                    Thread.sleep(500);
+                    Thread.sleep(200);
 
                 } catch (Exception e) {
                     log.error("Error in backfill day {} provider {}: {}", targetDate, provider.getProviderName(), e.getMessage());
