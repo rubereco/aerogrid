@@ -15,6 +15,12 @@ public class GencatApiClient {
 
     private static final String DATASET_ID = "/tasf-thgu.json";
 
+    /**
+     * Constructor initializing the REST client with base URL and API token.
+     *
+     * @param baseUrl  The base URL of the Gencat API.
+     * @param apiToken The authentication token for the API.
+     */
     public GencatApiClient(@Value("${gencat.api.url}") String baseUrl,
                            @Value("${gencat.api.token}") String apiToken) {
 
@@ -26,9 +32,10 @@ public class GencatApiClient {
     }
 
     /**
-     * Descarrega el llistat d'estacions úniques.
-     * Utilitza SoQL ($select=DISTINCT) per evitar baixar milions de mesures repetides.
-     * Només ens interessa la metadada de l'estació.
+     * Retrieves a list of unique stations from the API.
+     * Uses SoQL to fetch distinct station metadata, avoiding duplicate measurement data.
+     *
+     * @return List of GencatRawDto containing station information.
      */
     public List<GencatRawDto> getStations() {
         return restClient.get()
@@ -42,8 +49,10 @@ public class GencatApiClient {
     }
 
     /**
-     * Downloads measurements (data + hours) starting from a specific date.
-     * @param fromDate Date in ISO format or text (e.g., "2026-01-29T00:00:00")
+     * Downloads measurements starting from a specific date.
+     *
+     * @param fromDate Date in ISO format (e.g., "2026-01-29T00:00:00").
+     * @return List of GencatRawDto containing measurements.
      */
     public List<GencatRawDto> getMeasurements(String fromDate) {
         return restClient.get()

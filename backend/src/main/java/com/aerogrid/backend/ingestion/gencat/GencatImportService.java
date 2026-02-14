@@ -10,6 +10,7 @@ import com.aerogrid.backend.ingestion.common.DataImportProvider;
 import com.aerogrid.backend.repository.MeasurementRepository;
 import com.aerogrid.backend.repository.StationRepository;
 import com.aerogrid.backend.service.AqiCalculatorService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Service responsible for importing data from the Generalitat de Catalunya API.
+ * Handles fetching, mapping, and saving stations and measurements.
+ */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class GencatImportService implements DataImportProvider {
 
     private final GencatApiClient apiClient;
@@ -33,20 +39,10 @@ public class GencatImportService implements DataImportProvider {
     private int newStation = 0;
     private int newMeasurement = 0;
 
-    public GencatImportService(GencatApiClient apiClient, GencatMapper mapper,
-                               CommonMapper commonMapper,
-                               StationRepository stationRepository,
-                               MeasurementRepository measurementRepository,
-                               AqiCalculatorService aqiCalculatorService) {
-        this.apiClient = apiClient;
-        this.mapper = mapper;
-        this.commonMapper = commonMapper;
-        this.stationRepository = stationRepository;
-        this.measurementRepository = measurementRepository;
-        this.aqiCalculatorService = aqiCalculatorService;
-    }
 
-
+    /**
+     * Imports all unique stations from the Gencat API and saves them to the database.
+     */
     @Override
     public void importStations() {
         log.info("Starting station import for {}", getProviderName());
@@ -61,6 +57,9 @@ public class GencatImportService implements DataImportProvider {
         log.info("Station import completed for {}. Added: {}", getProviderName(), newStation);
     }
 
+    /**
+     * Imports measurements for the current day.
+     */
     @Override
     public void importMeasurements() {
         log.info("Starting current measurement import for {}", getProviderName());
@@ -75,6 +74,11 @@ public class GencatImportService implements DataImportProvider {
         log.info("Current measurement import completed for {}. New data: {}", getProviderName(), newMeasurement);
     }
 
+    /**
+     * Imports measurements for a specific date.
+     *
+     * @param date The date to import measurements for.
+     */
     @Override
     public void importMeasurements(LocalDate date) {
         log.info("Ingesting historical data for day: {}", date);
@@ -92,8 +96,13 @@ public class GencatImportService implements DataImportProvider {
         log.info("Day {} completed. {} records processed. New data: {}", date, rawData.size(), newMeasurement);
     }
 
+    /**
+     * Processes a list of raw measurement records, handling station creation if necessary.
+     *
+     * @param rawData List of raw data DTOs.
+     */
     private void processMeasurementRecords(List<GencatRawDto> rawData) {
-        log.debug("Carregant catàleg d'estacions a memòria...");
+        log.debug("Loading station catalog into memory...");
         stationRepository.findAll().forEach(s -> stationCache.put(s.getCode(), s));
 
         for (GencatRawDto raw : rawData) {
@@ -102,7 +111,7 @@ public class GencatImportService implements DataImportProvider {
 
             if (station == null) {
                 try {
-                    log.info("Estació desconeguda detectada: {}. Intentant crear-la...", raw.getStationCode());
+                    log.info("Unknown station detected: {}. Attempting to create it...", raw.getStationCode());
 
                     CommonStationDto tempStation = mapper.toStationDto(raw);
                     saveToDatabase(tempStation);
@@ -115,7 +124,7 @@ public class GencatImportService implements DataImportProvider {
                         continue;
                     }
                 } catch (Exception e) {
-                    log.error("Error gestionant nova estació: {}", e.getMessage());
+                    log.error("Error handling new station: {}", e.getMessage());
                     continue;
                 }
             }
@@ -130,6 +139,12 @@ public class GencatImportService implements DataImportProvider {
         }
     }
 
+    /**
+     * Saves a single measurement to the database.
+     *
+     * @param dto     The measurement DTO.
+     * @param station The associated station entity.
+     */
     private void saveToDatabase(CommonMeasurementDto dto, Station station) {
         Pollutant pollutant = commonMapper.mapPollutantString(dto.getPollutant());
 
@@ -147,10 +162,15 @@ public class GencatImportService implements DataImportProvider {
             newMeasurement++;
 
         } catch (Exception e) {
-            log.error("Error crític insertant mesura: {}", e.getMessage());
+            log.error("Critical error inserting measurement: {}", e.getMessage());
         }
     }
 
+    /**
+     * Saves a station to the database if it does not already exist.
+     *
+     * @param dto The station DTO.
+     */
     private void saveToDatabase(CommonStationDto dto) {
         try {
             if (stationRepository.findByCode(dto.getCode()).isPresent()) {
@@ -168,6 +188,11 @@ public class GencatImportService implements DataImportProvider {
         }
     }
 
+    /**
+     * Returns the name of the data provider.
+     *
+     * @return The provider name.
+     */
     @Override
     public String getProviderName() {
         return "GenCat";

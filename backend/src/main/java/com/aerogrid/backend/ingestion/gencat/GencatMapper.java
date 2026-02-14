@@ -10,9 +10,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Component responsible for mapping raw Gencat data to common DTOs.
+ */
 @Component
 public class GencatMapper {
 
+    /**
+     * Maps the raw data to a CommonStationDto.
+     *
+     * @param raw The raw data containing station information.
+     * @return A CommonStationDto.
+     */
     public CommonStationDto toStationDto(GencatRawDto raw) {
         return CommonStationDto.builder()
                 .code(raw.getStationCode())
@@ -26,8 +35,9 @@ public class GencatMapper {
 
     /**
      * Converts a raw Gencat DTO containing hourly values to a list of CommonMeasurementDto.
-     * @param raw the raw data containing 24h measurements
-     * @return list of individual measurement DTOs
+     *
+     * @param raw The raw data containing 24h measurements.
+     * @return List of individual measurement DTOs.
      */
     public List<CommonMeasurementDto> toMeasurementDtos(GencatRawDto raw) {
         List<CommonMeasurementDto> measurements = new ArrayList<>();
@@ -60,6 +70,12 @@ public class GencatMapper {
         return measurements;
     }
 
+    /**
+     * Helper to parse double values safely.
+     *
+     * @param value String value to parse.
+     * @return Double value or null.
+     */
     private Double parseDouble(String value) {
         return (value != null) ? Double.valueOf(value) : null;
     }
