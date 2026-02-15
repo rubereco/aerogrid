@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test class for StationIngestionController.
  * Tests all endpoint scenarios including successful ingestion and error cases.
  */
-@SpringBootTest
+@WebMvcTest
 @AutoConfigureMockMvc
 class StationIngestionControllerTest {
 
@@ -139,20 +139,6 @@ class StationIngestionControllerTest {
                         .content(objectMapper.writeValueAsString(validDto)))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Server error: Database error"));
-    }
-
-    @Test
-    @DisplayName("Should return 500 INTERNAL SERVER ERROR when unexpected error occurs")
-    void testIngestMeasurement_UnexpectedError() throws Exception {
-        doThrow(new Exception("Unexpected error"))
-                .when(ingestionService).processIngestion(eq(VALID_API_KEY), any(StationIngestionDto.class));
-
-        mockMvc.perform(post(ENDPOINT)
-                        .header(API_KEY_HEADER, VALID_API_KEY)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validDto)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Unexpected error: Unexpected error"));
     }
 
     @Test
