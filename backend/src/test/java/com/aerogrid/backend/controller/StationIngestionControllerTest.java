@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test class for StationIngestionController.
  * Tests all endpoint scenarios including successful ingestion and error cases.
  */
-@WebMvcTest
+@WebMvcTest(StationIngestionController.class)
 @AutoConfigureMockMvc
 class StationIngestionControllerTest {
 

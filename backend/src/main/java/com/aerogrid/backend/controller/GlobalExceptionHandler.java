@@ -3,6 +3,8 @@ package com.aerogrid.backend.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +31,32 @@ public class GlobalExceptionHandler {
         log.error("Missing required parameter: {}", ex.getParameterName());
         return ResponseEntity.badRequest()
                 .body("Missing required parameter: " + ex.getParameterName());
+    }
+
+    /**
+     * Handles missing required request headers.
+     *
+     * @param ex the exception
+     * @return 400 Bad Request response
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<String> handleMissingHeader(MissingRequestHeaderException ex) {
+        log.error("Missing required header: {}", ex.getHeaderName());
+        return ResponseEntity.badRequest()
+                .body("Missing required header: " + ex.getHeaderName());
+    }
+
+    /**
+     * Handles invalid JSON or malformed request body.
+     *
+     * @param ex the exception
+     * @return 400 Bad Request response
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleInvalidJson(HttpMessageNotReadableException ex) {
+        log.error("Invalid request body: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body("Invalid request body: malformed JSON or invalid format");
     }
 
     /**

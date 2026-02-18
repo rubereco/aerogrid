@@ -1,5 +1,6 @@
 package com.aerogrid.backend.controller.mapper;
 
+import com.aerogrid.backend.controller.dto.StationDetailsDto;
 import com.aerogrid.backend.controller.dto.StationMapDto;
 import com.aerogrid.backend.domain.Station;
 import org.locationtech.jts.geom.Coordinate;
@@ -67,6 +68,61 @@ public class StationMapper {
                 .code(dto.getCode())
                 .name(dto.getName())
                 .location(location)
+                .build();
+    }
+
+    /**
+     * Converts a Station entity to StationDetailsDto.
+     * Includes all station information except owner relationship.
+     *
+     * @param station the station entity to convert
+     * @return the station details DTO
+     */
+    public StationDetailsDto toDetailsDto(Station station) {
+        if (station == null) {
+            return null;
+        }
+
+        return StationDetailsDto.builder()
+                .id(station.getId())
+                .code(station.getCode())
+                .name(station.getName())
+                .municipality(station.getMunicipality())
+                .latitude(station.getLocation() != null ? station.getLocation().getY() : null)
+                .longitude(station.getLocation() != null ? station.getLocation().getX() : null)
+                .sourceType(station.getSourceType() != null ? station.getSourceType().name() : null)
+                .trustScore(station.getTrustScore())
+                .isActive(station.getIsActive())
+                .createdAt(station.getCreatedAt())
+                .updatedAt(station.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Converts a StationDetailsDto to Station entity.
+     * Note: Owner relationship is not populated from DTO.
+     *
+     * @param dto the station details DTO to convert
+     * @return the station entity
+     */
+    public Station toEntityFromDetails(StationDetailsDto dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        Point location = null;
+        if (dto.getLatitude() != null && dto.getLongitude() != null) {
+            location = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
+        }
+
+        return Station.builder()
+                .id(dto.getId())
+                .code(dto.getCode())
+                .name(dto.getName())
+                .municipality(dto.getMunicipality())
+                .location(location)
+                .trustScore(dto.getTrustScore())
+                .isActive(dto.getIsActive())
                 .build();
     }
 }

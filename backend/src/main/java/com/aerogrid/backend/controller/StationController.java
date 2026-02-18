@@ -1,5 +1,6 @@
 package com.aerogrid.backend.controller;
 
+import com.aerogrid.backend.controller.dto.StationDetailsDto;
 import com.aerogrid.backend.controller.dto.StationMapDto;
 import com.aerogrid.backend.controller.mapper.StationMapper;
 import com.aerogrid.backend.domain.Station;
@@ -76,12 +77,13 @@ public class StationController {
      * Retrieves detailed information for a specific station.
      *
      * @param code the station code
-     * @return station details or 404 if not found
+     * @return station details DTO or 404 if not found
      */
     @GetMapping("/{code}")
-    public ResponseEntity<Station> getStationDetails(@PathVariable String code) {
+    public ResponseEntity<StationDetailsDto> getStationDetails(@PathVariable String code) {
         try {
             return stationRepository.findByCode(code)
+                    .map(stationMapper::toDetailsDto)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
