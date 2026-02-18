@@ -1,13 +1,18 @@
 package com.aerogrid.backend.controller.dto;
 
+import com.aerogrid.backend.domain.Pollutant;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * DTO for station information displayed on map.
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class StationMapDto {
     /** Station identifier. */
     private Long id;
@@ -28,5 +33,5 @@ public class StationMapDto {
     private Integer currentAqi;
 
     /** Worst pollutant identifier. */
-    private String worstPollutant;
+    private Pollutant worstPollutant;
 }
