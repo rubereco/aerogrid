@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class StationIngestionController {
 
+    /* Tota la lògica que hi ha en aquesta classe es moura en el service */
     private final CitizenIngestionService ingestionService;
 
     /**

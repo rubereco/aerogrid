@@ -21,6 +21,8 @@ import java.util.List;
 @RequestMapping("/api/v1/stations")
 @RequiredArgsConstructor
 public class StationController {
+
+    /* Tota la lògica que hi ha en aquesta classe es moura en el service */
     private final StationRepository stationRepository;
     private final StationMapper stationMapper;
 
@@ -49,7 +51,6 @@ public class StationController {
         try {
             List<Station> stations;
 
-            // When the next phase begins, the logic will be moved to the service layer
             if (minLat != null && minLon != null && maxLat != null && maxLon != null) {
                 stations = stationRepository.findStationsInBoundingBox(minLon, minLat, maxLon, maxLat);
             } else if (userId != null) {
@@ -63,7 +64,7 @@ public class StationController {
                     .toList();
 
             return ResponseEntity.ok(dtos);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid parameters for station query: {}", e.getMessage());
             return ResponseEntity.badRequest().body(null);

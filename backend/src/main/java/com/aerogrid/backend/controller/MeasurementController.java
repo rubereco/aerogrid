@@ -21,6 +21,8 @@ import java.util.List;
 @RequestMapping("/api/v1/measurements")
 @RequiredArgsConstructor
 public class MeasurementController {
+
+    /* Tota la lògica que hi ha en aquesta classe es moura en el service */
     private final MeasurementRepository measurementRepository;
     private final MeasurementMapper measurementMapper;
 
