@@ -1,7 +1,5 @@
-package com.aerogrid.backend.controller;
+package com.aerogrid.backend.ingestion.citizen;
 
-import com.aerogrid.backend.ingestion.citizen.CitizenIngestionService;
-import com.aerogrid.backend.ingestion.citizen.StationIngestionDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

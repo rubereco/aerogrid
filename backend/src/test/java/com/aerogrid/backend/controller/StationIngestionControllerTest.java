@@ -1,6 +1,7 @@
 package com.aerogrid.backend.controller;
 
 import com.aerogrid.backend.ingestion.citizen.CitizenIngestionService;
+import com.aerogrid.backend.ingestion.citizen.StationIngestionController;
 import com.aerogrid.backend.ingestion.citizen.StationIngestionDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
