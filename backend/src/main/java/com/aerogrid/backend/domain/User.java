@@ -7,8 +7,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Entity representing a user in the AeroGrid system.
@@ -27,7 +32,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor     // generates an all-arguments constructor
 @Entity                 // marks this class as a JPA entity
 @Table(name = "users")  // maps this entity to the "users" table
-public class User {
+public class User implements UserDetails {
 
     /** Unique identifier for the user */
     @Id
@@ -51,11 +56,33 @@ public class User {
     private Role role;
 
     /** Timestamp when the user account was created */
-    @CreationTimestamp  // automatically sets the creation timestamp
+    @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     /** Timestamp when the user account was last updated */
-    @UpdateTimestamp    // automatically updates the timestamp on modification
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
 }
