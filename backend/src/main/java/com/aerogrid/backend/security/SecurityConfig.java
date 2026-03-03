@@ -3,6 +3,7 @@ package com.aerogrid.backend.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -24,8 +25,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li><b>CSRF disabled</b> — not required because the API uses Bearer tokens
  *       instead of browser cookies.</li>
  *   <li><b>Public routes</b> — {@code /api/v1/auth/**} (login &amp; register),
- *       {@code /api/v1/ingest/**} (sensor ingestion via API key), and
- *       {@code /api/v1/stations} (public map data) are accessible without a
+ *       {@code /api/v1/ingest/**} (sensor ingestion via API key), and GET methods on
+ *       {@code /api/v1/stations/**} (public map data) are accessible without a
  *       token.</li>
  *   <li><b>Protected routes</b> — every other endpoint requires a valid JWT.</li>
  *   <li><b>Stateless sessions</b> — Spring Security is instructed never to
@@ -82,7 +83,7 @@ public class SecurityConfig {
                         // -- Public whitelist --
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/ingest/**").permitAll()
-                        .requestMatchers("/api/v1/stations").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/stations/**").permitAll()
 
                         // -- Protected: every other route requires a valid JWT --
                         .anyRequest().authenticated()
