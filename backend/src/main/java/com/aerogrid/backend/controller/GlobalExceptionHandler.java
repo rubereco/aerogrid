@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -96,6 +98,24 @@ public class GlobalExceptionHandler {
         log.error("Invalid argument: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body("Invalid argument: " + ex.getMessage());
+    }
+
+    /**
+     * Handles Spring Security authentication failures (bad credentials, disabled
+     * or locked accounts) that bubble up through the controller layer.
+     *
+     * <p>This covers {@link BadCredentialsException}, {@code DisabledException},
+     * and {@code LockedException}, all of which extend
+     * {@link AuthenticationException}.</p>
+     *
+     * @param ex the authentication exception
+     * @return 403 Forbidden response
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<String> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body("Authentication failed: " + ex.getMessage());
     }
 
     /**

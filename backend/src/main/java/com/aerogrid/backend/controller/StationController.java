@@ -1,14 +1,18 @@
 package com.aerogrid.backend.controller;
 
+import com.aerogrid.backend.controller.dto.StationCreationResponseDto;
 import com.aerogrid.backend.controller.dto.StationDetailsDto;
 import com.aerogrid.backend.controller.dto.StationMapDto;
 import com.aerogrid.backend.controller.mapper.StationMapper;
 import com.aerogrid.backend.domain.Station;
+import com.aerogrid.backend.domain.User;
 import com.aerogrid.backend.repository.StationRepository;
+import com.aerogrid.backend.service.StationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +29,7 @@ public class StationController {
     /* Tota la lògica que hi ha en aquesta classe es moura en el service */
     private final StationRepository stationRepository;
     private final StationMapper stationMapper;
+    private final StationService stationService;
 
     /**
      * Retrieves stations based on filtering criteria.
@@ -91,5 +96,22 @@ public class StationController {
             log.error("Error retrieving station details for code: {}", code, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @PostMapping
+    public ResponseEntity<StationCreationResponseDto> createStation(
+            @RequestBody StationDetailsDto stationDetails,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            StationCreationResponseDto response = stationService.createStation(stationDetails, currentUser);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid station data: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            log.error("Error creating station", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
     }
 }
