@@ -5,6 +5,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -12,19 +13,21 @@ public class GencatApiClient {
 
     private final RestClient restClient;
     private final String apiToken;
-
-    private static final String DATASET_ID = "/tasf-thgu.json";
+    private final String datasetId;
 
     /**
      * Constructor initializing the REST client with base URL and API token.
      *
      * @param baseUrl  The base URL of the Gencat API.
      * @param apiToken The authentication token for the API.
+     * @param datasetId The dataset ID for air quality data.
      */
     public GencatApiClient(@Value("${gencat.api.url}") String baseUrl,
-                           @Value("${gencat.api.token}") String apiToken) {
+                           @Value("${gencat.api.token}") String apiToken,
+                           @Value("${gencat.api.air-quality-dataset-id}") String datasetId) {
 
         this.apiToken = apiToken;
+        this.datasetId = datasetId;
 
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
@@ -38,10 +41,12 @@ public class GencatApiClient {
      * @return List of GencatRawDto containing station information.
      */
     public List<GencatRawDto> getStations() {
+        String fields = "codi_eoi, nom_estacio, municipi, latitud, longitud, tipus_estacio";
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path(DATASET_ID)
-                        .queryParam("$select", "DISTINCT codi_eoi, nom_estacio, municipi, latitud, longitud, tipus_estacio")
+                        .path(datasetId)
+                        .queryParam("$select", fields)
+                        .queryParam("$group", fields)
                         .build())
                 .header("X-App-Token", apiToken)
                 .retrieve()
@@ -55,14 +60,35 @@ public class GencatApiClient {
      * @return List of GencatRawDto containing measurements.
      */
     public List<GencatRawDto> getMeasurements(String fromDate) {
-        return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(DATASET_ID)
-                        .queryParam("$where", "data >= '" + fromDate + "'")
-                        .queryParam("$limit", "50000")
-                        .build())
-                .header("X-App-Token", apiToken)
-                .retrieve()
-                .body(new ParameterizedTypeReference<List<GencatRawDto>>() {});
+        List<GencatRawDto> allMeasurements = new ArrayList<>();
+        int limit = 50000;
+        int offset = 0;
+        boolean moreData = true;
+
+        while (moreData) {
+            int currentOffset = offset;
+            List<GencatRawDto> batch = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(datasetId)
+                            .queryParam("$where", "data >= '" + fromDate + "'")
+                            .queryParam("$limit", String.valueOf(limit))
+                            .queryParam("$offset", String.valueOf(currentOffset))
+                            .queryParam("$order", "data ASC")
+                            .build())
+                    .header("X-App-Token", apiToken)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<GencatRawDto>>() {});
+
+            if (batch == null || batch.isEmpty()) {
+                moreData = false;
+            } else {
+                allMeasurements.addAll(batch);
+                offset += limit;
+                if (batch.size() < limit) {
+                    moreData = false;
+                }
+            }
+        }
+        return allMeasurements;
     }
 }
