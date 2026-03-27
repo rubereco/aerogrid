@@ -16,7 +16,8 @@ export const AuthContext = createContext();
  * @returns {JSX.Element}
  */
 export const AuthProvider = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    // Inicialitzem de forma directa (lazy) comprovant si ja hi ha un token
+    const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'));
     const navigate = useNavigate();
 
     useEffect(() => {
