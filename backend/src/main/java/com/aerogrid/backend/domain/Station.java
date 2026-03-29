@@ -61,7 +61,7 @@ public class Station {
     /** Community trust score based on user votes */
     @Builder.Default
     @Column(nullable = false)
-    private int trustScore = 0;
+    private int trustScore = 50;
 
     /** Whether the station is currently active and collecting data */
     @Builder.Default

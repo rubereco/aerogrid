@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * Mapper for converting between Station entity and StationMapDto.
  */
 @Component
-public class StationMapper {
+public class    StationMapper {
 
     private static final int SRID_WGS84 = 4326;
     private final GeometryFactory geometryFactory;
