@@ -1,0 +1,17 @@
+### Cast or Update a Vote (Requires Authentication)
+PUT http://localhost:8080/api/v1/stations/1/votes/me
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "type": "POSITIVE"
+}
+
+### Get User's Vote (Requires Authentication)
+GET http://localhost:8080/api/v1/stations/1/votes/me
+Authorization: Bearer {{auth_token}}
+
+### Remove User's Vote (Requires Authentication)
+DELETE http://localhost:8080/api/v1/stations/1/votes/me
+Authorization: Bearer {{auth_token}}
+
