@@ -1,5 +1,18 @@
+### Login and Set Auth Token Variable
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "r@r.r",
+  "password": "r"
+}
+
+> {%
+    client.global.set("auth_token", response.body.token);
+%}
+
 ### Cast or Update a Vote (Requires Authentication)
-PUT http://localhost:8080/api/v1/stations/1/votes/me
+PUT http://localhost:8080/api/v1/stations/2/votes/me
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 
@@ -12,6 +25,5 @@ GET http://localhost:8080/api/v1/stations/1/votes/me
 Authorization: Bearer {{auth_token}}
 
 ### Remove User's Vote (Requires Authentication)
-DELETE http://localhost:8080/api/v1/stations/1/votes/me
+DELETE http://localhost:8080/api/v1/stations/2/votes/me
 Authorization: Bearer {{auth_token}}
-
