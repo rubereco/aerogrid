@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Map, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import * as pmtiles from 'pmtiles';
-import { MAP_STYLE_URL } from '../../utils/constants';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
 
@@ -100,51 +99,160 @@ export default function MapComponent() {
         }
     }, []);
 
-    // Configuració del nou mapStyle utilitzant PMTiles completament local
+    // Configuració del nou mapStyle utilitzant PMTiles completament local i un estil visual professional
     const pmtilesUrl = `${window.location.origin}/spain.pmtiles`;
 
-    const mapStyle = {
-        version: 8,
-        glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-        sources: {
-            "protomaps": {
-                type: "vector",
-                url: `pmtiles://${pmtilesUrl}`,
-                attribution: '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
-            }
-        },
-        layers: [
-            {
-                "id": "background",
-                "type": "background",
-                "paint": { "background-color": "#f1f5f9" }
-            },
-            {
-                "id": "water",
-                "type": "fill",
-                "source": "protomaps",
-                "source-layer": "water",
-                "paint": { "fill-color": "#bae6fd" }
-            },
-            {
-                "id": "roads",
-                "type": "line",
-                "source": "protomaps",
-                "source-layer": "roads",
-                "paint": {
-                    "line-color": "#ffffff",
-                    "line-width": 1.5
+    const mapStyle = useMemo(() => {
+        // Obtenim l'estil bàsic tipus "positron" que OpenMapTiles requereix
+        // i canviem dinàmicament la font d'internet per al teu PMTiles local!
+        return {
+            version: 8,
+            name: "Local Light Map",
+            sprite: "https://openmaptiles.github.io/positron-gl-style/sprite",
+            glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+            sources: {
+                openmaptiles: {
+                    type: "vector",
+                    url: `pmtiles://${pmtilesUrl}`,
+                    attribution: '<a href="https://openstreetmap.org">OpenStreetMap</a>'
                 }
             },
-            {
-                "id": "boundaries",
-                "type": "line",
-                "source": "protomaps",
-                "source-layer": "boundaries",
-                "paint": { "line-color": "#cbd5e1" }
-            }
-        ]
-    };
+            layers: [
+                {
+                    "id": "background",
+                    "type": "background",
+                    "paint": { "background-color": "#f8f9fa" }
+                },
+                {
+                    "id": "landuse_residential",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "landuse",
+                    "filter": ["==", "class", "residential"],
+                    "paint": { "fill-color": "#f1f5f9" }
+                },
+                {
+                    "id": "landcover_wood",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "landcover",
+                    "filter": ["==", "class", "wood"],
+                    "paint": { "fill-color": "#dcfce7", "fill-opacity": 0.7 }
+                },
+                {
+                    "id": "landcover_grass",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "landcover",
+                    "filter": ["==", "class", "grass"],
+                    "paint": { "fill-color": "#e2e8f0", "fill-opacity": 0.5 }
+                },
+                {
+                    "id": "park",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "park",
+                    "paint": { "fill-color": "#dcfce7" }
+                },
+                {
+                    "id": "water",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "water",
+                    "paint": { "fill-color": "#bae6fd" }
+                },
+                {
+                    "id": "waterway",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "waterway",
+                    "paint": { "line-color": "#bae6fd", "line-width": 1.5 }
+                },
+                {
+                    "id": "transportation_minor",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "transportation",
+                    "filter": ["in", "class", "minor", "tertiary", "residential"],
+                    "paint": { "line-color": "#ffffff", "line-width": 1.5 }
+                },
+                {
+                    "id": "transportation_secondary",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "transportation",
+                    "filter": ["in", "class", "secondary", "primary_link", "secondary_link"],
+                    "paint": { "line-color": "#ffffff", "line-width": 2.5 }
+                },
+                {
+                    "id": "transportation_primary",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "transportation",
+                    "filter": ["in", "class", "primary", "trunk", "trunk_link"],
+                    "paint": { "line-color": "#ffffff", "line-width": 3.5 }
+                },
+                {
+                    "id": "transportation_motorway",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "transportation",
+                    "filter": ["==", "class", "motorway"],
+                    // Utilitza interpolació per fer les autopistes més gruixudes quan fas zoom a prop
+                    "paint": { "line-color": "#cbd5e1", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 1, 12, 4] }
+                },
+                {
+                    "id": "building",
+                    "type": "fill",
+                    "source": "openmaptiles",
+                    "source-layer": "building",
+                    "paint": { "fill-color": "#e2e8f0", "fill-opacity": 0.6 }
+                },
+                {
+                    "id": "boundary_country",
+                    "type": "line",
+                    "source": "openmaptiles",
+                    "source-layer": "boundary",
+                    "filter": ["==", "admin_level", 2],
+                    "paint": { "line-color": "#94a3b8", "line-width": 1.5, "line-dasharray": [3, 3] }
+                },
+                {
+                    "id": "place_label_towns",
+                    "type": "symbol",
+                    "source": "openmaptiles",
+                    "source-layer": "place",
+                    "filter": ["in", "class", "town", "village"],
+                    "layout": {
+                        "text-field": "{name}",
+                        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+                        "text-size": 12
+                    },
+                    "paint": {
+                        "text-color": "#64748b",
+                        "text-halo-color": "#ffffff",
+                        "text-halo-width": 1.5
+                    }
+                },
+                {
+                    "id": "place_label_city",
+                    "type": "symbol",
+                    "source": "openmaptiles",
+                    "source-layer": "place",
+                    "filter": ["==", "class", "city"],
+                    "layout": {
+                        "text-field": "{name}",
+                        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+                        "text-size": 16
+                    },
+                    "paint": {
+                        "text-color": "#334155",
+                        "text-halo-color": "#ffffff",
+                        "text-halo-width": 2
+                    }
+                }
+            ]
+        };
+    }, [pmtilesUrl]);
 
     // Per quan vulguis tornar a la versió online:
     // const mapStyle = import.meta.env.VITE_MAPTILER_KEY
