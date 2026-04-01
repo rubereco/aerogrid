@@ -114,6 +114,7 @@ export default function MapComponent() {
                 openmaptiles: {
                     type: "vector",
                     url: `pmtiles://${pmtilesUrl}`,
+                    maxzoom: 14,
                     attribution: '<a href="https://openstreetmap.org">OpenStreetMap</a>'
                 }
             },
@@ -128,6 +129,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "landuse",
+                    "minzoom": 10,
                     "filter": ["==", "class", "residential"],
                     "paint": { "fill-color": "#f1f5f9" }
                 },
@@ -136,6 +138,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "landcover",
+                    "minzoom": 6,
                     "filter": ["==", "class", "wood"],
                     "paint": { "fill-color": "#dcfce7", "fill-opacity": 0.7 }
                 },
@@ -144,6 +147,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "landcover",
+                    "minzoom": 8,
                     "filter": ["==", "class", "grass"],
                     "paint": { "fill-color": "#e2e8f0", "fill-opacity": 0.5 }
                 },
@@ -152,6 +156,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "park",
+                    "minzoom": 10,
                     "paint": { "fill-color": "#dcfce7" }
                 },
                 {
@@ -159,6 +164,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "water",
+                    "minzoom": 0,
                     "paint": { "fill-color": "#bae6fd" }
                 },
                 {
@@ -166,6 +172,7 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "waterway",
+                    "minzoom": 8,
                     "paint": { "line-color": "#bae6fd", "line-width": 1.5 }
                 },
                 {
@@ -173,6 +180,7 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "transportation",
+                    "minzoom": 13,
                     "filter": ["in", "class", "minor", "tertiary", "residential"],
                     "paint": { "line-color": "#ffffff", "line-width": 1.5 }
                 },
@@ -181,6 +189,7 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "transportation",
+                    "minzoom": 9,
                     "filter": ["in", "class", "secondary", "primary_link", "secondary_link"],
                     "paint": { "line-color": "#ffffff", "line-width": 2.5 }
                 },
@@ -189,6 +198,7 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "transportation",
+                    "minzoom": 5,
                     "filter": ["in", "class", "primary", "trunk", "trunk_link"],
                     "paint": { "line-color": "#ffffff", "line-width": 3.5 }
                 },
@@ -197,8 +207,8 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "transportation",
+                    "minzoom": 4,
                     "filter": ["==", "class", "motorway"],
-                    // Utilitza interpolació per fer les autopistes més gruixudes quan fas zoom a prop
                     "paint": { "line-color": "#cbd5e1", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 1, 12, 4] }
                 },
                 {
@@ -206,6 +216,7 @@ export default function MapComponent() {
                     "type": "fill",
                     "source": "openmaptiles",
                     "source-layer": "building",
+                    "minzoom": 14,
                     "paint": { "fill-color": "#e2e8f0", "fill-opacity": 0.6 }
                 },
                 {
@@ -213,6 +224,7 @@ export default function MapComponent() {
                     "type": "line",
                     "source": "openmaptiles",
                     "source-layer": "boundary",
+                    "minzoom": 2,
                     "filter": ["==", "admin_level", 2],
                     "paint": { "line-color": "#94a3b8", "line-width": 1.5, "line-dasharray": [3, 3] }
                 },
@@ -221,6 +233,7 @@ export default function MapComponent() {
                     "type": "symbol",
                     "source": "openmaptiles",
                     "source-layer": "place",
+                    "minzoom": 9,
                     "filter": ["in", "class", "town", "village"],
                     "layout": {
                         "text-field": "{name}",
@@ -238,6 +251,8 @@ export default function MapComponent() {
                     "type": "symbol",
                     "source": "openmaptiles",
                     "source-layer": "place",
+                    "minzoom": 4,
+                    "maxzoom": 12,
                     "filter": ["==", "class", "city"],
                     "layout": {
                         "text-field": "{name}",
