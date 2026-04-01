@@ -16,3 +16,5 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/v1/auth/register',
     STATIONS: '/api/v1/stations'
 };
+
+export const MAP_STYLE_URL = "http://localhost:8081/styles/basic-preview/style.json";

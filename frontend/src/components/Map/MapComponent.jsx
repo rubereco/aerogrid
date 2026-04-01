@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Map, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
+import { MAP_STYLE_URL } from '../../utils/constants';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
 
@@ -95,9 +96,13 @@ export default function MapComponent() {
         }
     }, []);
 
-    const mapStyle = import.meta.env.VITE_MAPTILER_KEY 
-        ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`
-        : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+    // mapStyle configurat per llegir des del teu TileServer-GL local al port 8081 a través de les variables d'entorn
+    const mapStyle = MAP_STYLE_URL;
+
+    // Per quan vulguis tornar a la versió online:
+    // const mapStyle = import.meta.env.VITE_MAPTILER_KEY
+    //     ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`
+    //     : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
     return (
         <div className="w-full h-full">
