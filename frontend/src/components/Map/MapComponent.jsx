@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Map, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
+import * as pmtiles from 'pmtiles';
 import { MAP_STYLE_URL } from '../../utils/constants';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
+
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol('pmtiles', protocol.tile);
 
 /**
  * Main map component displaying air quality stations.
@@ -96,8 +100,51 @@ export default function MapComponent() {
         }
     }, []);
 
-    // mapStyle configurat per llegir des del teu TileServer-GL local al port 8081 a través de les variables d'entorn
-    const mapStyle = MAP_STYLE_URL;
+    // Configuració del nou mapStyle utilitzant PMTiles completament local
+    const pmtilesUrl = `${window.location.origin}/spain.pmtiles`;
+
+    const mapStyle = {
+        version: 8,
+        glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+        sources: {
+            "protomaps": {
+                type: "vector",
+                url: `pmtiles://${pmtilesUrl}`,
+                attribution: '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
+            }
+        },
+        layers: [
+            {
+                "id": "background",
+                "type": "background",
+                "paint": { "background-color": "#f1f5f9" }
+            },
+            {
+                "id": "water",
+                "type": "fill",
+                "source": "protomaps",
+                "source-layer": "water",
+                "paint": { "fill-color": "#bae6fd" }
+            },
+            {
+                "id": "roads",
+                "type": "line",
+                "source": "protomaps",
+                "source-layer": "roads",
+                "paint": {
+                    "line-color": "#ffffff",
+                    "line-width": 1.5
+                }
+            },
+            {
+                "id": "boundaries",
+                "type": "line",
+                "source": "protomaps",
+                "source-layer": "boundaries",
+                "paint": { "line-color": "#cbd5e1" }
+            }
+        ]
+    };
 
     // Per quan vulguis tornar a la versió online:
     // const mapStyle = import.meta.env.VITE_MAPTILER_KEY
