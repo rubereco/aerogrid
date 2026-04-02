@@ -1,6 +1,5 @@
 package com.aerogrid.backend.controller.dto;
 
-import com.aerogrid.backend.domain.Pollutant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,8 +29,8 @@ public class StationMapDto {
     private Double longitude;
 
     /** Current worst AQI value. */
-    private Integer currentAqi;
+    private Integer aqi;
 
     /** Worst pollutant identifier. */
-    private Pollutant worstPollutant;
+    private String pollutant;
 }

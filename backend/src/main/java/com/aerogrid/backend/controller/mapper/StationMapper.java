@@ -40,8 +40,8 @@ public class    StationMapper {
                 .name(station.getName())
                 .latitude(station.getLocation() != null ? station.getLocation().getY() : null)
                 .longitude(station.getLocation() != null ? station.getLocation().getX() : null)
-                .currentAqi(null)  // Must be set from latest measurement
-                .worstPollutant(null)  // Must be set from latest measurement
+                .aqi(null)  // Must be set from latest measurement
+                .pollutant(null)  // Must be set from latest measurement
                 .build();
     }
 

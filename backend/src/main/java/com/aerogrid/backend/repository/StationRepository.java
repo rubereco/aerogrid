@@ -2,6 +2,7 @@ package com.aerogrid.backend.repository;
 
 import com.aerogrid.backend.controller.dto.StationMapDto;
 import com.aerogrid.backend.domain.Station;
+import com.aerogrid.backend.repository.projection.StationMapProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -23,13 +24,21 @@ public interface StationRepository extends JpaRepository<Station, Long> {
      */
     Optional<Station> findByCode(String code);
 
-    /**
-     * Finds all stations owned by a specific user.
-     *
-     * @param userId the owner's user ID
-     * @return list of stations owned by the user
-     */
-    List<Station> findByOwnerId(Long userId);
+    @Query(value = """
+        SELECT s.id as id, s.code as code, s.name as name,
+               CAST(ST_Y(s.location) AS double precision) as latitude,
+               CAST(ST_X(s.location) AS double precision) as longitude,
+               a.max_aqi as aqi, a.pollutant as pollutant
+        FROM stations s
+        LEFT JOIN LATERAL (
+            SELECT max_aqi, pollutant
+            FROM hourly_aqi_snapshots h
+            WHERE h.station_id = s.id
+            ORDER BY h.timestamp DESC LIMIT 1
+        ) a ON true
+        WHERE s.owner_id = :userId
+        """, nativeQuery = true)
+    List<StationMapProjection> findByOwnerIdProjection(@org.springframework.data.repository.query.Param("userId") Long userId);
 
     /**
      * Finds all active stations within a specified distance from a geographic point.
@@ -57,18 +66,21 @@ public interface StationRepository extends JpaRepository<Station, Long> {
      *
      * @return list of station map DTOs with current status
      */
-    @Query("""
-       SELECT new com.aerogrid.backend.controller.dto.StationMapDto(
-           s.id, s.code, s.name, 
-           CAST(ST_Y(s.location) AS double), 
-           CAST(ST_X(s.location) AS double),
-           (SELECT m.aqi FROM Measurement m WHERE m.station = s ORDER BY m.timestamp DESC LIMIT 1),
-           (SELECT m.pollutant FROM Measurement m WHERE m.station = s ORDER BY m.timestamp DESC LIMIT 1)
-       )
-       FROM Station s
-       WHERE s.isActive = true
-       """)
-    List<StationMapDto> findAllStationsWithStatus();
+    @Query(value = """
+        SELECT s.id as id, s.code as code, s.name as name,
+               CAST(ST_Y(s.location) AS double precision) as latitude,
+               CAST(ST_X(s.location) AS double precision) as longitude,
+               a.max_aqi as aqi, a.pollutant as pollutant
+        FROM stations s
+        LEFT JOIN LATERAL (
+            SELECT max_aqi, pollutant
+            FROM hourly_aqi_snapshots h
+            WHERE h.station_id = s.id
+            ORDER BY h.timestamp DESC LIMIT 1
+        ) a ON true
+        WHERE s.is_active = true
+        """, nativeQuery = true)
+    List<StationMapProjection> findAllStationsWithStatus();
 
     /**
      * Cerca estacions dins d'un rectangle (Bounding Box).
@@ -80,9 +92,23 @@ public interface StationRepository extends JpaRepository<Station, Long> {
      * @param maxLat Latitud màxima (Nord) - YMax
      */
     @Query(value = """
-        SELECT * FROM stations s
+        SELECT s.id as id, s.code as code, s.name as name,
+               CAST(ST_Y(s.location) AS double precision) as latitude,
+               CAST(ST_X(s.location) AS double precision) as longitude,
+               a.max_aqi as aqi, a.pollutant as pollutant
+        FROM stations s
+        LEFT JOIN LATERAL (
+            SELECT max_aqi, pollutant
+            FROM hourly_aqi_snapshots h
+            WHERE h.station_id = s.id
+            ORDER BY h.timestamp DESC LIMIT 1
+        ) a ON true
         WHERE s.location && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)
         AND s.is_active = true
         """, nativeQuery = true)
-    List<Station> findStationsInBoundingBox(double minLon, double minLat, double maxLon, double maxLat);
+    List<StationMapProjection> findStationsInBoundingBox(
+            @org.springframework.data.repository.query.Param("minLon") double minLon,
+            @org.springframework.data.repository.query.Param("minLat") double minLat,
+            @org.springframework.data.repository.query.Param("maxLon") double maxLon,
+            @org.springframework.data.repository.query.Param("maxLat") double maxLat);
 }

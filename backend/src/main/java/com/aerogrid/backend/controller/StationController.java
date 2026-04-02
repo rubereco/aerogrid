@@ -7,6 +7,7 @@ import com.aerogrid.backend.controller.mapper.StationMapper;
 import com.aerogrid.backend.domain.Station;
 import com.aerogrid.backend.domain.User;
 import com.aerogrid.backend.repository.StationRepository;
+import com.aerogrid.backend.repository.projection.StationMapProjection;
 import com.aerogrid.backend.service.StationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,18 +55,26 @@ public class StationController {
             @RequestParam(required = false) Long userId
     ) {
         try {
-            List<Station> stations;
+            List<StationMapProjection> projections;
 
             if (minLat != null && minLon != null && maxLat != null && maxLon != null) {
-                stations = stationRepository.findStationsInBoundingBox(minLon, minLat, maxLon, maxLat);
+                projections = stationRepository.findStationsInBoundingBox(minLon, minLat, maxLon, maxLat);
             } else if (userId != null) {
-                stations = stationRepository.findByOwnerId(userId);
+                projections = stationRepository.findByOwnerIdProjection(userId);
             } else {
-                stations = stationRepository.findAll();
+                projections = stationRepository.findAllStationsWithStatus();
             }
 
-            List<StationMapDto> dtos = stations.stream()
-                    .map(stationMapper::toDto)
+            List<StationMapDto> dtos = projections.stream()
+                    .map(p -> StationMapDto.builder()
+                            .id(p.getId())
+                            .code(p.getCode())
+                            .name(p.getName())
+                            .latitude(p.getLatitude())
+                            .longitude(p.getLongitude())
+                            .aqi(p.getAqi())
+                            .pollutant(p.getPollutant())
+                            .build())
                     .toList();
 
             return ResponseEntity.ok(dtos);

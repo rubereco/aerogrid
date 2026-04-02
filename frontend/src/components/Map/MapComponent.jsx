@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Map, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import * as pmtiles from 'pmtiles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
+import StationDetailsPanel from './StationDetailsPanel';
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -17,41 +18,73 @@ maplibregl.addProtocol('pmtiles', protocol.tile);
 export default function MapComponent() {
     const [stationsGeoJSON, setStationsGeoJSON] = useState(null);
     const [selectedStation, setSelectedStation] = useState(null);
+    const [detailsStationCode, setDetailsStationCode] = useState(null);
     const [cursor, setCursor] = useState('auto');
+    const mapRef = useRef(null);
 
-    /**
-     * Fetches stations from the API and transforms them into a GeoJSON FeatureCollection.
-     */
+    const fetchStationsInBounds = useCallback(async (bounds) => {
+        try {
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+
+            const response = await api.get('/api/v1/stations', {
+                params: {
+                    minLon: sw.lng,
+                    minLat: sw.lat,
+                    maxLon: ne.lng,
+                    maxLat: ne.lat
+                }
+            });
+            const stations = response.data;
+
+            const geojsonData = {
+                type: 'FeatureCollection',
+                features: stations.map(station => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [station.longitude, station.latitude]
+                    },
+                    properties: {
+                        id: station.id,
+                        code: station.code,
+                        name: station.name,
+                        aqi: station.aqi || 0,
+                        pollutant: station.pollutant
+                    }
+                }))
+            };
+
+            setStationsGeoJSON(geojsonData);
+        } catch (error) {
+            console.error("Error fetching stations:", error);
+        }
+    }, []);
+
+    const onMoveEnd = useCallback((e) => {
+        const map = e.target;
+        const bounds = map.getBounds();
+        fetchStationsInBounds(bounds);
+    }, [fetchStationsInBounds]);
+
     useEffect(() => {
+        // Initial fetch handled after map load or you can trigger a global find if you don't pass bounds.
+        // For default we just do a general fetch until map loads:
         const fetchStations = async () => {
             try {
                 const response = await api.get('/api/v1/stations');
                 const stations = response.data;
-                
                 const geojsonData = {
                     type: 'FeatureCollection',
                     features: stations.map(station => ({
                         type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [station.longitude, station.latitude]
-                        },
-                        properties: {
-                            id: station.id,
-                            code: station.code,
-                            name: station.name,
-                            aqi: station.aqi || 0,
-                            pollutant: station.pollutant
-                        }
+                        geometry: { type: 'Point', coordinates: [station.longitude, station.latitude] },
+                        properties: { id: station.id, code: station.code, name: station.name, aqi: station.aqi || 0, pollutant: station.pollutant }
                     }))
                 };
-                
                 setStationsGeoJSON(geojsonData);
-            } catch (error) {
-                console.error("Error fetching stations:", error);
-            }
+            } catch (error) { console.error(error); }
         };
-
         fetchStations();
     }, []);
 
@@ -64,7 +97,7 @@ export default function MapComponent() {
         type: 'circle',
         source: 'stations',
         paint: {
-            'circle-radius': 8,
+            'circle-radius': 14,
             'circle-color': [
                 'step',
                 ['get', 'aqi'],
@@ -76,6 +109,21 @@ export default function MapComponent() {
             ],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'
+        }
+    }), []);
+
+    const textLayerStyle = useMemo(() => ({
+        id: 'stations-text-layer',
+        type: 'symbol',
+        source: 'stations',
+        layout: {
+            'text-field': ['to-string', ['get', 'aqi']],
+            'text-size': 12,
+            'text-allow-overlap': true,
+            'text-ignore-placement': true
+        },
+        paint: {
+            'text-color': '#ffffff'
         }
     }), []);
 
@@ -275,8 +323,9 @@ export default function MapComponent() {
     //     : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
     return (
-        <div className="w-full h-full">
+        <div className="w-full h-full relative">
             <Map
+                ref={mapRef}
                 initialViewState={{
                     longitude: 2.1734,
                     latitude: 41.3851,
@@ -288,12 +337,14 @@ export default function MapComponent() {
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 onClick={onClick}
+                onMoveEnd={onMoveEnd}
                 cursor={cursor}
                 style={{ width: '100%', height: '100%' }}
             >
                 {stationsGeoJSON && (
                     <Source id="stations" type="geojson" data={stationsGeoJSON}>
                         <Layer {...layerStyle} />
+                        <Layer {...textLayerStyle} />
                     </Source>
                 )}
 
@@ -304,15 +355,15 @@ export default function MapComponent() {
                         anchor="bottom"
                         onClose={() => setSelectedStation(null)}
                         closeOnClick={false}
-                        className="rounded-lg shadow-lg"
+                        className="rounded-lg shadow-lg z-10"
                     >
                         <div className="p-2 text-sm text-gray-800">
                             <h3 className="font-bold text-lg mb-1">{selectedStation.properties.name}</h3>
                             <p className="mb-1"><span className="font-semibold">Code:</span> {selectedStation.properties.code}</p>
                             <p className="mb-3"><span className="font-semibold">AQI:</span> {selectedStation.properties.aqi}</p>
                             <button 
-                                disabled 
-                                className="w-full px-4 py-2 bg-blue-500 text-white rounded cursor-not-allowed opacity-50 font-medium transition-colors"
+                                onClick={() => setDetailsStationCode(selectedStation.properties.code)}
+                                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium transition-colors cursor-pointer"
                             >
                                 View details
                             </button>
@@ -320,6 +371,13 @@ export default function MapComponent() {
                     </Popup>
                 )}
             </Map>
+
+            {detailsStationCode && (
+                <StationDetailsPanel
+                    stationCode={detailsStationCode}
+                    onClose={() => setDetailsStationCode(null)}
+                />
+            )}
         </div>
     );
 }

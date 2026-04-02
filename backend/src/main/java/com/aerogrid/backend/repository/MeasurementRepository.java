@@ -1,6 +1,7 @@
 package com.aerogrid.backend.repository;
 
 import com.aerogrid.backend.domain.Measurement;
+import com.aerogrid.backend.repository.projection.HourlyAqiNativeProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -55,4 +56,12 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
     List<Measurement> findByStationCodeAndTimestampBetween(@Param("stationCode") String stationCode,
                                                             @Param("start") LocalDateTime start,
                                                             @Param("end") LocalDateTime end);
+
+    @Query(value = """
+        SELECT m.station_id as stationId, MAX(m.aqi) as maxAqi, MAX(m.pollutant) as pollutant
+        FROM measurements m 
+        WHERE m.timestamp BETWEEN :start AND :end 
+        GROUP BY m.station_id
+        """, nativeQuery = true)
+    List<HourlyAqiNativeProjection> findMaxAqiBetweenNative(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }
