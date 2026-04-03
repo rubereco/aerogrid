@@ -144,7 +144,10 @@ export default function MapComponent() {
                 6, '#881337'
             ],
             'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff'
+            'circle-stroke-color': '#ffffff',
+            'circle-opacity-transition': { duration: 0 },
+            'circle-radius-transition': { duration: 0 },
+            'circle-color-transition': { duration: 0 }
         }
     }), []);
 
@@ -156,10 +159,12 @@ export default function MapComponent() {
         layout: {
             'text-field': '{point_count_abbreviated}',
             'text-size': 12,
-            'text-allow-overlap': true
+            'text-allow-overlap': true,
+            'text-ignore-placement': true
         },
         paint: {
-            'text-color': '#ffffff'
+            'text-color': '#ffffff',
+            'text-opacity-transition': { duration: 0 }
         }
     }), []);
 
@@ -178,29 +183,66 @@ export default function MapComponent() {
      */
     const onClick = useCallback((event) => {
         const feature = event.features && event.features[0];
-        if (!feature) return;
-
-        if (feature.properties.cluster) {
-            const clusterId = feature.properties.cluster_id;
-            const mapboxSource = mapRef.current.getSource('stations');
-
-            mapboxSource.getClusterExpansionZoom(clusterId, (err, zoom) => {
-                if (err) return;
-                mapRef.current.easeTo({
-                    center: feature.geometry.coordinates,
-                    zoom: zoom,
-                    duration: 500
-                });
-            });
+        if (!feature) {
+            setSelectedStation(null);
             return;
         }
 
+        // Properly identify if the clicked feature is a cluster
+        const isCluster = feature.properties.cluster ||
+                          (feature.layer && (feature.layer.id === 'clusters-layer' || feature.layer.id === 'clusters-count-layer'));
+
+        if (isCluster) {
+            if (!stationsGeoJSON || !stationsGeoJSON.features) return;
+
+            const pointCount = Number(feature.properties.point_count) || 2;
+            const clusterLng = feature.geometry.coordinates ? feature.geometry.coordinates[0] : event.lngLat.lng;
+            const clusterLat = feature.geometry.coordinates ? feature.geometry.coordinates[1] : event.lngLat.lat;
+
+            // 1. Calculate squared distance from all stations to the cluster center
+            const stationsWithDistance = stationsGeoJSON.features.map(f => {
+                const lng = f.geometry.coordinates[0];
+                const lat = f.geometry.coordinates[1];
+                const distSq = Math.pow(lng - clusterLng, 2) + Math.pow(lat - clusterLat, 2);
+                return { ...f, distSq };
+            });
+
+            // 2. Sort by distance to find the practically closest `pointCount` stations
+            stationsWithDistance.sort((a, b) => a.distSq - b.distSq);
+
+            // 3. Take the first `pointCount` stations (these are the ones making up the cluster)
+            const clusterStations = stationsWithDistance.slice(0, pointCount);
+
+            // 4. Find the maximum AQI among these assumed clustered stations
+            let maxAqi = -1;
+            clusterStations.forEach(st => {
+                const aqi = Number(st.properties.aqi) || 0;
+                if (aqi > maxAqi) maxAqi = aqi;
+            });
+
+            // 5. Filter down to only those with the exact max AQI
+            const worstStations = clusterStations.filter(st => (Number(st.properties.aqi) || 0) === maxAqi);
+
+            // 6. Because we already sorted by distance in step 2, worstStations[0] is automatically the one closest to the center!
+            const selectedFeature = worstStations[0] || clusterStations[0];
+
+            if (selectedFeature) {
+                setSelectedStation({
+                    longitude: selectedFeature.geometry.coordinates[0],
+                    latitude: selectedFeature.geometry.coordinates[1],
+                    properties: selectedFeature.properties
+                });
+            }
+            return;
+        }
+
+        // For individual unclustered stations
         setSelectedStation({
             longitude: event.lngLat.lng,
             latitude: event.lngLat.lat,
             properties: feature.properties
         });
-    }, []);
+    }, [stationsGeoJSON]); // Added stationsGeoJSON to dependencies so it has fresh state
 
     // Configuració del nou mapStyle utilitzant PMTiles completament local i un estil visual professional
     const pmtilesUrl = `${window.location.origin}/spain.pmtiles`;
@@ -220,6 +262,10 @@ export default function MapComponent() {
                     maxzoom: 14,
                     attribution: '<a href="https://openstreetmap.org">OpenStreetMap</a>'
                 }
+            },
+            transition: {
+                duration: 0,
+                delay: 0
             },
             layers: [
                 {
@@ -388,7 +434,8 @@ export default function MapComponent() {
                 }}
                 mapLib={maplibregl}
                 mapStyle={mapStyle}
-                interactiveLayerIds={['stations-layer', 'clusters-layer']}
+                fadeDuration={0}
+                interactiveLayerIds={['stations-layer', 'clusters-layer', 'clusters-count-layer']}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 onClick={onClick}
