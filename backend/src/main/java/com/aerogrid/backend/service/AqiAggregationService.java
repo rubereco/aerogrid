@@ -6,6 +6,7 @@ import com.aerogrid.backend.repository.HourlyAqiSnapshotRepository;
 import com.aerogrid.backend.repository.MeasurementRepository;
 import com.aerogrid.backend.repository.StationRepository;
 import com.aerogrid.backend.repository.projection.HourlyAqiNativeProjection;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,33 +28,41 @@ public class AqiAggregationService {
 
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
+    @PostConstruct
     public void aggregateHourlyAqi() {
-        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime start = now.minusHours(1);
-        LocalDateTime end = now.minusNanos(1);
+        LocalDateTime end = LocalDateTime.now();
+        LocalDateTime start = end.minusDays(2);
 
-        log.info("Starting hourly AQI aggregation for window: {} to {}", start, end);
+        log.info("Starting AQI aggregation for window: {} to {}", start, end);
 
         List<HourlyAqiNativeProjection> aggregates = measurementRepository.findMaxAqiBetweenNative(start, end);
+        int savedCount = 0;
 
         for (HourlyAqiNativeProjection proj : aggregates) {
             try {
-                Station station = stationRepository.findById(proj.getStationId()).orElse(null);
-                if (station != null) {
-                    HourlyAqiSnapshot snapshot = HourlyAqiSnapshot.builder()
-                            .station(station)
-                            .timestamp(start)
-                            .maxAqi(proj.getMaxAqi())
-                            .pollutant(proj.getPollutant())
-                            .build();
+                boolean exists = hourlyAqiSnapshotRepository.existsByStationIdAndTimestamp(
+                        proj.getStationId(), proj.getTimestamp()
+                );
 
-                    hourlyAqiSnapshotRepository.save(snapshot);
+                if (!exists) {
+                    Station station = stationRepository.findById(proj.getStationId()).orElse(null);
+                    if (station != null) {
+                        HourlyAqiSnapshot snapshot = HourlyAqiSnapshot.builder()
+                                .station(station)
+                                .timestamp(proj.getTimestamp())
+                                .maxAqi(proj.getMaxAqi())
+                                .pollutant(proj.getPollutant())
+                                .build();
+
+                        hourlyAqiSnapshotRepository.save(snapshot);
+                        savedCount++;
+                    }
                 }
             } catch (Exception e) {
-                log.error("Failed to save snapshot for stationId: {}", proj.getStationId(), e);
+                log.error("Failed to save snapshot for stationId: {} at {}", proj.getStationId(), proj.getTimestamp(), e);
             }
         }
 
-        log.info("Completed hourly AQI aggregation. Processed {} stations.", aggregates.size());
+        log.info("Completed AQI aggregation. Processed {} hourly aggregates, saved {} new snapshots.", aggregates.size(), savedCount);
     }
 }

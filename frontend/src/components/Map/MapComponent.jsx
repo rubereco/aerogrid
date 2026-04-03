@@ -101,11 +101,13 @@ export default function MapComponent() {
             'circle-color': [
                 'step',
                 ['get', 'aqi'],
-                '#22c55e', 
-                50,
-                '#eab308', 
-                100,
-                '#ef4444'  
+                '#9ca3af', // Default (0 o sense dades) -> Gris
+                1, '#22c55e', // 1: Good -> Verd
+                2, '#eab308', // 2: Fair -> Groc
+                3, '#f97316', // 3: Moderate -> Taronja
+                4, '#ef4444', // 4: Poor -> Vermell
+                5, '#a855f7', // 5: Very Poor -> Lila
+                6, '#881337'  // 6: Extremely Poor -> Granat fosc
             ],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'

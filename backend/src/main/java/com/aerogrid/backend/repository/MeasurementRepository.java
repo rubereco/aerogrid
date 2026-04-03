@@ -58,10 +58,13 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
                                                             @Param("end") LocalDateTime end);
 
     @Query(value = """
-        SELECT m.station_id as stationId, MAX(m.aqi) as maxAqi, MAX(m.pollutant) as pollutant
+        SELECT m.station_id as stationId, 
+               DATE_TRUNC('hour', m.timestamp) as timestamp, 
+               MAX(m.aqi) as maxAqi, 
+               MAX(m.pollutant) as pollutant
         FROM measurements m 
         WHERE m.timestamp BETWEEN :start AND :end 
-        GROUP BY m.station_id
+        GROUP BY m.station_id, DATE_TRUNC('hour', m.timestamp)
         """, nativeQuery = true)
     List<HourlyAqiNativeProjection> findMaxAqiBetweenNative(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }
