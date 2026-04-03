@@ -96,8 +96,9 @@ export default function MapComponent() {
         id: 'stations-layer',
         type: 'circle',
         source: 'stations',
+        filter: ['!', ['has', 'point_count']],
         paint: {
-            'circle-radius': 14,
+            'circle-radius': 10, // Fetus una mica més petits perquè sense número queden millor
             'circle-color': [
                 'step',
                 ['get', 'aqi'],
@@ -114,19 +115,46 @@ export default function MapComponent() {
         }
     }), []);
 
-    const textLayerStyle = useMemo(() => ({
-        id: 'stations-text-layer',
+    const clusterLayerStyle = useMemo(() => ({
+        id: 'clusters-layer',
+        type: 'circle',
+        source: 'stations',
+        filter: ['has', 'point_count'],
+        paint: {
+            'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 24],
+            'circle-color': [
+                'step',
+                ['get', 'max_aqi'],
+                '#9ca3af',
+                1, '#22c55e',
+                2, '#eab308',
+                3, '#f97316',
+                4, '#ef4444',
+                5, '#a855f7',
+                6, '#881337'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff'
+        }
+    }), []);
+
+    const clusterCountLayerStyle = useMemo(() => ({
+        id: 'clusters-count-layer',
         type: 'symbol',
         source: 'stations',
+        filter: ['has', 'point_count'],
         layout: {
-            'text-field': ['to-string', ['get', 'aqi']],
+            'text-field': '{point_count_abbreviated}',
             'text-size': 12,
-            'text-allow-overlap': true,
-            'text-ignore-placement': true
+            'text-allow-overlap': true
         },
         paint: {
             'text-color': '#ffffff'
         }
+    }), []);
+
+    const clusterProperties = useMemo(() => ({
+        max_aqi: ['max', ['get', 'aqi']]
     }), []);
 
     const onMouseEnter = useCallback(() => setCursor('pointer'), []);
@@ -140,13 +168,28 @@ export default function MapComponent() {
      */
     const onClick = useCallback((event) => {
         const feature = event.features && event.features[0];
-        if (feature) {
-            setSelectedStation({
-                longitude: event.lngLat.lng,
-                latitude: event.lngLat.lat,
-                properties: feature.properties
+        if (!feature) return;
+
+        if (feature.properties.cluster) {
+            const clusterId = feature.properties.cluster_id;
+            const mapboxSource = mapRef.current.getSource('stations');
+
+            mapboxSource.getClusterExpansionZoom(clusterId, (err, zoom) => {
+                if (err) return;
+                mapRef.current.easeTo({
+                    center: feature.geometry.coordinates,
+                    zoom: zoom,
+                    duration: 500
+                });
             });
+            return;
         }
+
+        setSelectedStation({
+            longitude: event.lngLat.lng,
+            latitude: event.lngLat.lat,
+            properties: feature.properties
+        });
     }, []);
 
     // Configuració del nou mapStyle utilitzant PMTiles completament local i un estil visual professional
@@ -335,7 +378,7 @@ export default function MapComponent() {
                 }}
                 mapLib={maplibregl}
                 mapStyle={mapStyle}
-                interactiveLayerIds={['stations-layer']}
+                interactiveLayerIds={['stations-layer', 'clusters-layer']}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 onClick={onClick}
@@ -344,9 +387,18 @@ export default function MapComponent() {
                 style={{ width: '100%', height: '100%' }}
             >
                 {stationsGeoJSON && (
-                    <Source id="stations" type="geojson" data={stationsGeoJSON}>
+                    <Source
+                        id="stations"
+                        type="geojson"
+                        data={stationsGeoJSON}
+                        cluster={true}
+                        clusterMaxZoom={14}
+                        clusterRadius={50}
+                        clusterProperties={clusterProperties}
+                    >
+                        <Layer {...clusterLayerStyle} />
+                        <Layer {...clusterCountLayerStyle} />
                         <Layer {...layerStyle} />
-                        <Layer {...textLayerStyle} />
                     </Source>
                 )}
 
