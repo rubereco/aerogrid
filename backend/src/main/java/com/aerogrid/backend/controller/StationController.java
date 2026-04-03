@@ -44,6 +44,7 @@ public class StationController {
      * @param maxLat maximum latitude for bounding box filter
      * @param maxLon maximum longitude for bounding box filter
      * @param userId user ID to filter stations by owner
+     * @param targetTime optional target time for querying station data
      * @return list of station map DTOs
      */
     @GetMapping
@@ -52,17 +53,21 @@ public class StationController {
             @RequestParam(required = false) Double minLon,
             @RequestParam(required = false) Double maxLat,
             @RequestParam(required = false) Double maxLon,
-            @RequestParam(required = false) Long userId
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime targetTime
     ) {
         try {
             List<StationMapProjection> projections;
 
+            java.time.LocalDateTime actualTargetTime = targetTime != null ? targetTime : java.time.LocalDateTime.now();
+            java.time.LocalDateTime minTime = actualTargetTime.minusHours(48); // Extended to 48 hours for data elasticity
+
             if (minLat != null && minLon != null && maxLat != null && maxLon != null) {
-                projections = stationRepository.findStationsInBoundingBox(minLon, minLat, maxLon, maxLat);
+                projections = stationRepository.findStationsInBoundingBox(minLon, minLat, maxLon, maxLat, actualTargetTime, minTime);
             } else if (userId != null) {
-                projections = stationRepository.findByOwnerIdProjection(userId);
+                projections = stationRepository.findByOwnerIdProjection(userId, actualTargetTime, minTime);
             } else {
-                projections = stationRepository.findAllStationsWithStatus();
+                projections = stationRepository.findAllStationsWithStatus(actualTargetTime, minTime);
             }
 
             List<StationMapDto> dtos = projections.stream()

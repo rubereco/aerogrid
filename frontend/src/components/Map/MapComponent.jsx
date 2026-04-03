@@ -5,6 +5,7 @@ import * as pmtiles from 'pmtiles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
 import StationDetailsPanel from './StationDetailsPanel';
+import DateTimeFilter from './DateTimeFilter';
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -19,22 +20,28 @@ export default function MapComponent() {
     const [stationsGeoJSON, setStationsGeoJSON] = useState(null);
     const [selectedStation, setSelectedStation] = useState(null);
     const [detailsStationCode, setDetailsStationCode] = useState(null);
+    const [targetTime, setTargetTime] = useState(null);
     const [cursor, setCursor] = useState('auto');
     const mapRef = useRef(null);
 
-    const fetchStationsInBounds = useCallback(async (bounds) => {
+    const fetchStationsInBounds = useCallback(async (bounds, timeOverride) => {
         try {
             const sw = bounds.getSouthWest();
             const ne = bounds.getNorthEast();
 
-            const response = await api.get('/api/v1/stations', {
-                params: {
-                    minLon: sw.lng,
-                    minLat: sw.lat,
-                    maxLon: ne.lng,
-                    maxLat: ne.lat
-                }
-            });
+            const params = {
+                minLon: sw.lng,
+                minLat: sw.lat,
+                maxLon: ne.lng,
+                maxLat: ne.lat
+            };
+
+            const timeToUse = timeOverride !== undefined ? timeOverride : targetTime;
+            if (timeToUse) {
+                params.targetTime = timeToUse;
+            }
+
+            const response = await api.get('/api/v1/stations', { params });
             const stations = response.data;
 
             const geojsonData = {
@@ -59,7 +66,7 @@ export default function MapComponent() {
         } catch (error) {
             console.error("Error fetching stations:", error);
         }
-    }, []);
+    }, [targetTime]);
 
     const onMoveEnd = useCallback((e) => {
         const map = e.target;
@@ -72,7 +79,10 @@ export default function MapComponent() {
         // For default we just do a general fetch until map loads:
         const fetchStations = async () => {
             try {
-                const response = await api.get('/api/v1/stations');
+                const params = {};
+                if (targetTime) params.targetTime = targetTime;
+
+                const response = await api.get('/api/v1/stations', { params });
                 const stations = response.data;
                 const geojsonData = {
                     type: 'FeatureCollection',
@@ -86,7 +96,7 @@ export default function MapComponent() {
             } catch (error) { console.error(error); }
         };
         fetchStations();
-    }, []);
+    }, [targetTime]); // Added targetTime dependency to reload global data when time changes
 
     /**
      * Style layer for the points (circles).
@@ -386,9 +396,21 @@ export default function MapComponent() {
                 cursor={cursor}
                 style={{ width: '100%', height: '100%' }}
             >
+                {/* Floating DateTime Selector */}
+                <div className="absolute top-0 left-0 h-full w-full pointer-events-none" style={{zIndex: 40}}>
+                    <DateTimeFilter 
+                        onDateTimeChange={(newTime) => {
+                            setTargetTime(newTime);
+                            if (mapRef.current) {
+                                fetchStationsInBounds(mapRef.current.getBounds(), newTime);
+                            }
+                        }} 
+                    />
+                </div>
+
                 {stationsGeoJSON && (
-                    <Source
-                        id="stations"
+                    <Source 
+                        id="stations" 
                         type="geojson"
                         data={stationsGeoJSON}
                         cluster={true}

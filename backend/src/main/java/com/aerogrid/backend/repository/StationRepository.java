@@ -33,12 +33,17 @@ public interface StationRepository extends JpaRepository<Station, Long> {
         LEFT JOIN LATERAL (
             SELECT max_aqi, pollutant
             FROM hourly_aqi_snapshots h
-            WHERE h.station_id = s.id
+            WHERE h.station_id = s.id 
+              AND h.timestamp <= CAST(:targetTime AS timestamp)
+              AND h.timestamp >= CAST(:minTime AS timestamp)
             ORDER BY h.timestamp DESC LIMIT 1
         ) a ON true
         WHERE s.owner_id = :userId
         """, nativeQuery = true)
-    List<StationMapProjection> findByOwnerIdProjection(@org.springframework.data.repository.query.Param("userId") Long userId);
+    List<StationMapProjection> findByOwnerIdProjection(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("targetTime") java.time.LocalDateTime targetTime,
+            @org.springframework.data.repository.query.Param("minTime") java.time.LocalDateTime minTime);
 
     /**
      * Finds all active stations within a specified distance from a geographic point.
@@ -76,11 +81,15 @@ public interface StationRepository extends JpaRepository<Station, Long> {
             SELECT max_aqi, pollutant
             FROM hourly_aqi_snapshots h
             WHERE h.station_id = s.id
+              AND h.timestamp <= CAST(:targetTime AS timestamp)
+              AND h.timestamp >= CAST(:minTime AS timestamp)
             ORDER BY h.timestamp DESC LIMIT 1
         ) a ON true
         WHERE s.is_active = true
         """, nativeQuery = true)
-    List<StationMapProjection> findAllStationsWithStatus();
+    List<StationMapProjection> findAllStationsWithStatus(
+            @org.springframework.data.repository.query.Param("targetTime") java.time.LocalDateTime targetTime,
+            @org.springframework.data.repository.query.Param("minTime") java.time.LocalDateTime minTime);
 
     /**
      * Cerca estacions dins d'un rectangle (Bounding Box).
@@ -101,6 +110,8 @@ public interface StationRepository extends JpaRepository<Station, Long> {
             SELECT max_aqi, pollutant
             FROM hourly_aqi_snapshots h
             WHERE h.station_id = s.id
+              AND h.timestamp <= CAST(:targetTime AS timestamp)
+              AND h.timestamp >= CAST(:minTime AS timestamp)
             ORDER BY h.timestamp DESC LIMIT 1
         ) a ON true
         WHERE s.location && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)
@@ -110,5 +121,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
             @org.springframework.data.repository.query.Param("minLon") double minLon,
             @org.springframework.data.repository.query.Param("minLat") double minLat,
             @org.springframework.data.repository.query.Param("maxLon") double maxLon,
-            @org.springframework.data.repository.query.Param("maxLat") double maxLat);
+            @org.springframework.data.repository.query.Param("maxLat") double maxLat,
+            @org.springframework.data.repository.query.Param("targetTime") java.time.LocalDateTime targetTime,
+            @org.springframework.data.repository.query.Param("minTime") java.time.LocalDateTime minTime);
 }
