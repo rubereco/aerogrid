@@ -39,7 +39,7 @@ api.interceptors.response.use(
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             console.warn("Session expired or access denied. Removing token...");
             localStorage.removeItem('token');
-            // window.location.href = '/login';
+            window.dispatchEvent(new Event('sessionExpired'));
         }
         return Promise.reject(error);
     }
