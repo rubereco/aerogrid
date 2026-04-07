@@ -32,6 +32,7 @@ public class MeasurementMapper {
                 .stationCode(measurement.getStation() != null ? measurement.getStation().getCode() : null)
                 .pollutant(measurement.getPollutant() != null ? measurement.getPollutant().name() : null)
                 .value(measurement.getValue())
+                .aqi(measurement.getAqi())
                 .timestamp(measurement.getTimestamp())
                 .build();
     }
@@ -59,6 +60,7 @@ public class MeasurementMapper {
                 .station(station)
                 .pollutant(dto.getPollutant() != null ? Pollutant.valueOf(dto.getPollutant()) : null)
                 .value(dto.getValue())
+                .aqi(dto.getAqi())
                 .timestamp(dto.getTimestamp())
                 .build();
     }
@@ -80,6 +82,7 @@ public class MeasurementMapper {
                 .station(station)
                 .pollutant(dto.getPollutant() != null ? Pollutant.valueOf(dto.getPollutant()) : null)
                 .value(dto.getValue())
+                .aqi(dto.getAqi())
                 .timestamp(dto.getTimestamp())
                 .build();
     }

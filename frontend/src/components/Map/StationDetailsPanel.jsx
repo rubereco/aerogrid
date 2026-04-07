@@ -35,12 +35,38 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                 ]);
                 setStationInfo(infoRes.data);
 
-                const formattedData = measureRes.data.map(item => ({
-                    time: new Date(item.timestamp).toLocaleDateString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-                    aqi: item.aqi
+                const timestampsSet = new Set();
+                const pollutantsObj = {};
+
+                measureRes.data.forEach(item => {
+                    const t = item.timestamp;
+                    timestampsSet.add(t);
+                    if (!pollutantsObj[item.pollutant]) {
+                        pollutantsObj[item.pollutant] = {};
+                    }
+                    pollutantsObj[item.pollutant][t] = item.value;
+                });
+
+                const sortedTimestamps = Array.from(timestampsSet).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
+
+                const timeLabels = sortedTimestamps.map(t => new Date(t).toLocaleDateString([], {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
                 }));
 
-                setHistory(formattedData);
+                const seriesData = Object.keys(pollutantsObj).map(pollutant => {
+                    return {
+                        name: pollutant,
+                        type: 'line',
+                        smooth: true,
+                        data: sortedTimestamps.map(t => pollutantsObj[pollutant][t] || null)
+                    };
+                });
+
+                setHistory({
+                    timeLabels,
+                    seriesData,
+                    pollutants: Object.keys(pollutantsObj)
+                });
             } catch (err) {
                 console.error("Error fetching station details:", err);
                 setError('No s\'ha pogut carregar la informació de l\'estació.');
@@ -53,54 +79,70 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
     }, [stationCode]);
 
     const getChartOptions = () => {
+        if (!history || !history.timeLabels) return {};
+
+        const POLLUTANT_THRESHOLDS = {
+            NO2: [40, 90, 120, 230, 340],
+            PM10: [20, 40, 50, 100, 150],
+            PM25: [10, 20, 25, 50, 75],
+            'PM2.5': [10, 20, 25, 50, 75],
+            PM2_5: [10, 20, 25, 50, 75],
+            O3: [50, 100, 130, 240, 380],
+            SO2: [100, 200, 350, 500, 750],
+            CO: [5, 10, 15, 25, 50]
+        };
+
+        const visualMaps = history.pollutants
+            .map((pollutant, index) => {
+                const thresholds = POLLUTANT_THRESHOLDS[pollutant];
+                if (!thresholds) return null;
+                
+                return {
+                    show: false,
+                    seriesIndex: index,
+                    pieces: [
+                        { lte: thresholds[0], color: '#10b981' },               // Good (Green)
+                        { gt: thresholds[0], lte: thresholds[1], color: '#facc15' }, // Fair (Yellow)
+                        { gt: thresholds[1], lte: thresholds[2], color: '#fb923c' }, // Moderate (Orange)
+                        { gt: thresholds[2], lte: thresholds[3], color: '#ef4444' }, // Poor (Red)
+                        { gt: thresholds[3], lte: thresholds[4], color: '#9f1239' }, // Very Poor (Dark Red)
+                        { gt: thresholds[4], color: '#7e22ce' }                 // Extremely Poor (Purple)
+                    ],
+                    outOfRange: { color: '#9ca3af' }
+                };
+            })
+            .filter(Boolean);
+
         return {
             tooltip: {
                 trigger: 'axis'
             },
+            legend: {
+                data: history.pollutants,
+                top: 0
+            },
+            visualMap: visualMaps,
             grid: {
-                top: 10,
+                top: 40,
                 bottom: 20,
-                left: 30,
-                right: 10
+                left: 40,
+                right: 20,
+                containLabel: true
             },
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: history.map(item => item.time),
+                data: history.timeLabels,
             },
             yAxis: {
                 type: 'value'
             },
-            series: [
-                {
-                    data: history.map(item => item.aqi),
-                    type: 'line',
-                    smooth: true,
-                    lineStyle: {
-                        color: '#3b82f6',
-                        width: 3
-                    },
-                    itemStyle: {
-                        color: '#2563eb'
-                    },
-                    areaStyle: {
-                        color: {
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [{
-                                offset: 0, color: 'rgba(59, 130, 246, 0.5)'
-                            }, {
-                                offset: 1, color: 'rgba(59, 130, 246, 0.1)'
-                            }]
-                        }
-                    }
-                }
-            ]
+            series: history.seriesData
         };
     };
 
     return (
-        <div className="absolute top-0 right-0 h-full w-96 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col z-50 transform transition-transform duration-300">
+        <div className="absolute inset-0 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col z-50 transform transition-transform duration-300">
             <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
@@ -132,10 +174,10 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                         </div>
                     </div>
 
-                    <div className="flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 flex flex-col">
                         <h3 className="text-lg font-semibold text-gray-700 mb-4">Històric (Últim mes)</h3>
-                        {history.length > 0 ? (
-                            <div className="h-64 w-full">
+                        {history.timeLabels && history.timeLabels.length > 0 ? (
+                            <div className="flex-1 w-full">
                                 <ReactECharts option={getChartOptions()} style={{ height: '100%', width: '100%' }} />
                             </div>
                         ) : (
@@ -147,4 +189,3 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
         </div>
     );
 }
-

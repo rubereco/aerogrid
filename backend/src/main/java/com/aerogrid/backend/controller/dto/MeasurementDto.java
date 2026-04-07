@@ -15,5 +15,6 @@ public class MeasurementDto {
     private String stationCode;
     private String pollutant;
     private Double value;
+    private Integer aqi;
     private LocalDateTime timestamp;
 }
