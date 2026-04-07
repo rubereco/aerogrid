@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { X, Activity } from 'lucide-react';
-import ReactECharts from 'echarts-for-react';
 import api from '../../api/axios';
+import StationChart from './StationChart';
 
 export default function StationDetailsPanel({ stationCode, onClose }) {
-    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [stationInfo, setStationInfo] = useState(null);
@@ -16,57 +15,8 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
             setLoading(true);
             setError(null);
             try {
-                const toDate = new Date();
-                const fromDate = new Date();
-                fromDate.setMonth(fromDate.getMonth() - 1);
-
-                // Formata la data en format ISO compatible amb el LocalDateTime de Spring (ex: 2026-04-02T12:30:00)
-                const formatDateTime = (date) => date.toISOString().split('.')[0];
-
-                const [infoRes, measureRes] = await Promise.all([
-                    api.get(`/api/v1/stations/${stationCode}`),
-                    api.get(`/api/v1/measurements`, {
-                        params: {
-                            stationCode,
-                            from: formatDateTime(fromDate),
-                            to: formatDateTime(toDate)
-                        }
-                    })
-                ]);
-                setStationInfo(infoRes.data);
-
-                const timestampsSet = new Set();
-                const pollutantsObj = {};
-
-                measureRes.data.forEach(item => {
-                    const t = item.timestamp;
-                    timestampsSet.add(t);
-                    if (!pollutantsObj[item.pollutant]) {
-                        pollutantsObj[item.pollutant] = {};
-                    }
-                    pollutantsObj[item.pollutant][t] = item.value;
-                });
-
-                const sortedTimestamps = Array.from(timestampsSet).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
-
-                const timeLabels = sortedTimestamps.map(t => new Date(t).toLocaleDateString([], {
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                }));
-
-                const seriesData = Object.keys(pollutantsObj).map(pollutant => {
-                    return {
-                        name: pollutant,
-                        type: 'line',
-                        smooth: true,
-                        data: sortedTimestamps.map(t => pollutantsObj[pollutant][t] || null)
-                    };
-                });
-
-                setHistory({
-                    timeLabels,
-                    seriesData,
-                    pollutants: Object.keys(pollutantsObj)
-                });
+                const res = await api.get(`/api/v1/stations/${stationCode}`);
+                setStationInfo(res.data);
             } catch (err) {
                 console.error("Error fetching station details:", err);
                 setError('No s\'ha pogut carregar la informació de l\'estació.');
@@ -77,69 +27,6 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
 
         fetchData();
     }, [stationCode]);
-
-    const getChartOptions = () => {
-        if (!history || !history.timeLabels) return {};
-
-        const POLLUTANT_THRESHOLDS = {
-            NO2: [40, 90, 120, 230, 340],
-            PM10: [20, 40, 50, 100, 150],
-            PM25: [10, 20, 25, 50, 75],
-            'PM2.5': [10, 20, 25, 50, 75],
-            PM2_5: [10, 20, 25, 50, 75],
-            O3: [50, 100, 130, 240, 380],
-            SO2: [100, 200, 350, 500, 750],
-            CO: [5, 10, 15, 25, 50]
-        };
-
-        const visualMaps = history.pollutants
-            .map((pollutant, index) => {
-                const thresholds = POLLUTANT_THRESHOLDS[pollutant];
-                if (!thresholds) return null;
-                
-                return {
-                    show: false,
-                    seriesIndex: index,
-                    pieces: [
-                        { lte: thresholds[0], color: '#10b981' },               // Good (Green)
-                        { gt: thresholds[0], lte: thresholds[1], color: '#facc15' }, // Fair (Yellow)
-                        { gt: thresholds[1], lte: thresholds[2], color: '#fb923c' }, // Moderate (Orange)
-                        { gt: thresholds[2], lte: thresholds[3], color: '#ef4444' }, // Poor (Red)
-                        { gt: thresholds[3], lte: thresholds[4], color: '#9f1239' }, // Very Poor (Dark Red)
-                        { gt: thresholds[4], color: '#7e22ce' }                 // Extremely Poor (Purple)
-                    ],
-                    outOfRange: { color: '#9ca3af' }
-                };
-            })
-            .filter(Boolean);
-
-        return {
-            tooltip: {
-                trigger: 'axis'
-            },
-            legend: {
-                data: history.pollutants,
-                top: 0
-            },
-            visualMap: visualMaps,
-            grid: {
-                top: 40,
-                bottom: 20,
-                left: 40,
-                right: 20,
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                boundaryGap: false,
-                data: history.timeLabels,
-            },
-            yAxis: {
-                type: 'value'
-            },
-            series: history.seriesData
-        };
-    };
 
     return (
         <div className="absolute inset-0 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col z-50 transform transition-transform duration-300">
@@ -168,21 +55,17 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                         <div className="text-sm text-blue-600 font-semibold mb-1">Estat Actual</div>
                         <div className="flex items-end gap-2">
                             <span className="text-3xl font-bold text-blue-900">
-                                {stationInfo?.aqi || (history.length > 0 ? history[history.length-1].aqi : '--')}
+                                {stationInfo?.aqi || '--'}
                             </span>
                             <span className="text-sm text-blue-700 mb-1 font-medium">AQI</span>
                         </div>
                     </div>
 
                     <div className="flex-1 min-h-0 flex flex-col">
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Històric (Últim mes)</h3>
-                        {history.timeLabels && history.timeLabels.length > 0 ? (
-                            <div className="flex-1 w-full">
-                                <ReactECharts option={getChartOptions()} style={{ height: '100%', width: '100%' }} />
-                            </div>
-                        ) : (
-                            <div className="text-sm text-gray-400 italic">No hi ha dades recents.</div>
-                        )}
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Històric Agrupat</h3>
+                        <div className="flex-1 w-full min-h-0 bg-white rounded-xl shadow-inner border border-gray-100 p-4">
+                            <StationChart stationCode={stationCode} />
+                        </div>
                     </div>
                 </div>
             )}

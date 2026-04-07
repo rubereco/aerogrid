@@ -8,7 +8,9 @@ import com.aerogrid.backend.domain.Station;
 import com.aerogrid.backend.domain.User;
 import com.aerogrid.backend.repository.StationRepository;
 import com.aerogrid.backend.repository.projection.StationMapProjection;
+import com.aerogrid.backend.repository.projection.AggregatedMeasurementProjection;
 import com.aerogrid.backend.service.StationService;
+import com.aerogrid.backend.repository.MeasurementRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -31,6 +33,7 @@ public class StationController {
     private final StationRepository stationRepository;
     private final StationMapper stationMapper;
     private final StationService stationService;
+    private final MeasurementRepository measurementRepository;
 
     /**
      * Retrieves stations based on filtering criteria.
@@ -108,6 +111,42 @@ public class StationController {
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
             log.error("Error retrieving station details for code: {}", code, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{stationId}/measurements")
+    public ResponseEntity<List<AggregatedMeasurementProjection>> getAggregatedMeasurements(
+            @PathVariable("stationId") String stationCode,
+            @RequestParam("startDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
+            @RequestParam("endDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate,
+            @RequestParam("resolution") String resolution
+    ) {
+        try {
+            List<AggregatedMeasurementProjection> result;
+            switch (resolution.toUpperCase()) {
+                case "1D":
+                case "HOURLY":
+                    result = measurementRepository.aggregateHourly(stationCode, startDate, endDate);
+                    break;
+                case "1W":
+                case "SIX_HOURS":
+                    result = measurementRepository.aggregateSixHours(stationCode, startDate, endDate);
+                    break;
+                case "1M":
+                case "DAILY":
+                    result = measurementRepository.aggregateDaily(stationCode, startDate, endDate);
+                    break;
+                case "1Y":
+                case "WEEKLY":
+                    result = measurementRepository.aggregateWeekly(stationCode, startDate, endDate);
+                    break;
+                default:
+                    return ResponseEntity.badRequest().build();
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error aggregating measurements", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

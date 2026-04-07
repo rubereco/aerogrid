@@ -1,6 +1,7 @@
 package com.aerogrid.backend.repository;
 
 import com.aerogrid.backend.domain.Measurement;
+import com.aerogrid.backend.repository.projection.AggregatedMeasurementProjection;
 import com.aerogrid.backend.repository.projection.HourlyAqiNativeProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -67,4 +68,64 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
         GROUP BY m.station_id, DATE_TRUNC('hour', m.timestamp)
         """, nativeQuery = true)
     List<HourlyAqiNativeProjection> findMaxAqiBetweenNative(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = """
+        SELECT 
+            DATE_TRUNC('hour', m.timestamp) AS timestamp,
+            m.pollutant AS pollutant,
+            AVG(m.value) AS avgValue,
+            AVG(m.aqi) AS avgAqi
+        FROM measurements m JOIN stations s ON m.station_id = s.id
+        WHERE s.code = :stationCode AND m.timestamp BETWEEN :start AND :end
+        GROUP BY DATE_TRUNC('hour', m.timestamp), m.pollutant
+        ORDER BY timestamp ASC
+        """, nativeQuery = true)
+    List<AggregatedMeasurementProjection> aggregateHourly(@Param("stationCode") String stationCode,
+                                                        @Param("start") LocalDateTime start,
+                                                        @Param("end") LocalDateTime end);
+
+    @Query(value = """
+        SELECT 
+            date_bin('6 hours', m.timestamp, TIMESTAMP '2024-01-01 00:00:00') AS timestamp,
+            m.pollutant AS pollutant,
+            AVG(m.value) AS avgValue,
+            AVG(m.aqi) AS avgAqi
+        FROM measurements m JOIN stations s ON m.station_id = s.id
+        WHERE s.code = :stationCode AND m.timestamp BETWEEN :start AND :end
+        GROUP BY date_bin('6 hours', m.timestamp, TIMESTAMP '2024-01-01 00:00:00'), m.pollutant
+        ORDER BY timestamp ASC
+        """, nativeQuery = true)
+    List<AggregatedMeasurementProjection> aggregateSixHours(@Param("stationCode") String stationCode,
+                                                            @Param("start") LocalDateTime start,
+                                                            @Param("end") LocalDateTime end);
+
+    @Query(value = """
+        SELECT 
+            DATE_TRUNC('day', m.timestamp) AS timestamp,
+            m.pollutant AS pollutant,
+            AVG(m.value) AS avgValue,
+            AVG(m.aqi) AS avgAqi
+        FROM measurements m JOIN stations s ON m.station_id = s.id
+        WHERE s.code = :stationCode AND m.timestamp BETWEEN :start AND :end
+        GROUP BY DATE_TRUNC('day', m.timestamp), m.pollutant
+        ORDER BY timestamp ASC
+        """, nativeQuery = true)
+    List<AggregatedMeasurementProjection> aggregateDaily(@Param("stationCode") String stationCode,
+                                                        @Param("start") LocalDateTime start,
+                                                        @Param("end") LocalDateTime end);
+
+    @Query(value = """
+        SELECT 
+            DATE_TRUNC('week', m.timestamp) AS timestamp,
+            m.pollutant AS pollutant,
+            AVG(m.value) AS avgValue,
+            AVG(m.aqi) AS avgAqi
+        FROM measurements m JOIN stations s ON m.station_id = s.id
+        WHERE s.code = :stationCode AND m.timestamp BETWEEN :start AND :end
+        GROUP BY DATE_TRUNC('week', m.timestamp), m.pollutant
+        ORDER BY timestamp ASC
+        """, nativeQuery = true)
+    List<AggregatedMeasurementProjection> aggregateWeekly(@Param("stationCode") String stationCode,
+                                                        @Param("start") LocalDateTime start,
+                                                        @Param("end") LocalDateTime end);
 }
