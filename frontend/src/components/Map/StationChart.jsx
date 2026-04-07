@@ -3,6 +3,11 @@ import ReactECharts from 'echarts-for-react';
 import api from '../../api/axios';
 import { Activity } from 'lucide-react';
 
+const formatVal = (val) => {
+    if (val == null) return null;
+    return Number(Number(val).toFixed(2));
+};
+
 export default function StationChart({ stationCode }) {
     const [historyData, setHistoryData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -104,12 +109,17 @@ export default function StationChart({ stationCode }) {
 
         const pollutants = Object.keys(pollutantsObj);
 
+        // Notificar al pare de quins contaminants hi ha disponibles
+        if (typeof window !== 'undefined' && window.__pollutantsCallback) {
+            window.__pollutantsCallback(pollutants);
+        }
+
         const seriesData = pollutants.map(pollutant => {
             return {
                 name: pollutant,
                 type: 'line',
                 smooth: true,
-                data: sortedTimestamps.map(t => pollutantsObj[pollutant][t] != null ? Math.round(pollutantsObj[pollutant][t]) : null)
+                data: sortedTimestamps.map(t => pollutantsObj[pollutant][t] != null ? formatVal(pollutantsObj[pollutant][t]) : null)
             };
         });
 
@@ -137,7 +147,24 @@ export default function StationChart({ stationCode }) {
         const mainOptions = {
             tooltip: {
                 trigger: 'axis',
-                valueFormatter: (value) => value != null ? Math.round(value) : '-'
+                axisPointer: { type: 'cross' },
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#e5e7eb',
+                textStyle: { color: '#1f2937' },
+                padding: 12,
+                formatter: function (params) {
+                    let tooltipText = `<div style="font-weight:bold;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px">${params[0].axisValue}</div>`;
+                    params.forEach(param => {
+                      if (param.value !== null && param.value !== undefined) {
+                        tooltipText += `
+                          <div style="display:flex;justify-content:space-between;align-items:center;min-width:120px;margin:4px 0;">
+                            <span>${param.marker} ${param.seriesName}</span>
+                            <strong style="margin-left:12px">${formatVal(param.value)}</strong>
+                          </div>`;
+                      }
+                    });
+                    return tooltipText;
+                }
             },
             legend: {
                 data: pollutants,
@@ -160,7 +187,7 @@ export default function StationChart({ stationCode }) {
                 type: 'value',
                 name: 'Concentració',
                 axisLabel: {
-                    formatter: (value) => Math.round(value)
+                    formatter: (value) => formatVal(value)
                 }
             },
             dataZoom: [
@@ -179,7 +206,7 @@ export default function StationChart({ stationCode }) {
             name: 'AQI General',
             type: 'line',
             smooth: true,
-            data: sortedTimestamps.map(t => aqiObj[t] != null ? Math.round(aqiObj[t]) : null),
+            data: sortedTimestamps.map(t => aqiObj[t] != null ? formatVal(aqiObj[t]) : null),
             areaStyle: {
                 color: {
                     type: 'linear',
@@ -198,7 +225,7 @@ export default function StationChart({ stationCode }) {
         const aqiChartOptions = {
             tooltip: { 
                 trigger: 'axis',
-                valueFormatter: (value) => value != null ? Math.round(value) : '-'
+                valueFormatter: (value) => value != null ? formatVal(value) : '-'
             },
             grid: {
                 top: 20,
@@ -220,7 +247,7 @@ export default function StationChart({ stationCode }) {
                 max: 6,
                 splitNumber: 5,
                 axisLabel: {
-                    formatter: (value) => Math.round(value)
+                    formatter: (value) => formatVal(value)
                 }
             },
             visualMap: {
