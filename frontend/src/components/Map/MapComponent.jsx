@@ -244,6 +244,44 @@ export default function MapComponent() {
         });
     }, [stationsGeoJSON]); // Added stationsGeoJSON to dependencies so it has fresh state
 
+    // Escoltar event del buscador (FloatingHeader.jsx)
+    useEffect(() => {
+        const handleFlyToStation = (e) => {
+            const { station } = e.detail;
+
+            // 1. Moure la càmera
+            if (mapRef.current) {
+                mapRef.current.flyTo({
+                    center: [station.longitude, station.latitude],
+                    zoom: 14,
+                    duration: 1500
+                });
+            }
+
+            // 2. Seleccionar l'estació per mostrar el Popup en comptes dels detalls complerts
+            setTimeout(() => {
+                setSelectedStation({
+                    longitude: station.longitude,
+                    latitude: station.latitude,
+                    properties: station
+                });
+            }, 500);
+        };
+
+        const handleClearSelection = () => {
+            setSelectedStation(null);
+            setDetailsStationCode(null);
+        };
+
+        window.addEventListener('flyToStation', handleFlyToStation);
+        window.addEventListener('clearMapSelection', handleClearSelection);
+
+        return () => {
+            window.removeEventListener('flyToStation', handleFlyToStation);
+            window.removeEventListener('clearMapSelection', handleClearSelection);
+        };
+    }, []);
+
     // Configuració del nou mapStyle utilitzant PMTiles completament local i un estil visual professional
     const pmtilesUrl = `${window.location.origin}/spain.pmtiles`;
 
