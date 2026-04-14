@@ -89,8 +89,8 @@ export default function FloatingHeader() {
 
     return (
         <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none w-full p-4 md:p-6">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-none">
-                
+            <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-none">
+
                 {/* 
                   MOBILE ROW: Logo + Search + Hamburger inside a single Island 
                   DESKTOP: Just the Logo as Left Island

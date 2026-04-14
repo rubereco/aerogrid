@@ -53,17 +53,19 @@ export default function MapPage() {
                 </div>
                 
                 {/* Botó flotant per baixar/pujar del footer */}
-                <button 
-                    onClick={toggleScroll}
-                    className="absolute bottom-6 left-6 z-10 p-3 bg-white/90 backdrop-blur-md text-gray-700 hover:text-blue-600 hover:bg-white rounded-full shadow-lg border border-gray-100 hover:scale-110 transition-all cursor-pointer group"
-                    aria-label={isAtBottom ? "Torna a dalt" : "Mostra més informació"}
-                >
-                    {isAtBottom ? (
-                        <ChevronUp className="w-6 h-6 animate-bounce" />
-                    ) : (
-                        <ChevronDown className="w-6 h-6 animate-bounce" />
-                    )}
-                </button>
+                <div className="absolute bottom-6 w-full px-4 md:px-6 left-0 right-0 z-10 pointer-events-none flex">
+                    <button
+                        onClick={toggleScroll}
+                        className="p-3 bg-white/90 backdrop-blur-md text-gray-700 hover:text-blue-600 hover:bg-white rounded-full shadow-lg border border-gray-100 hover:scale-110 transition-all cursor-pointer pointer-events-auto group inline-flex"
+                        aria-label={isAtBottom ? "Torna a dalt" : "Mostra més informació"}
+                    >
+                        {isAtBottom ? (
+                            <ChevronUp className="w-6 h-6 animate-bounce" />
+                        ) : (
+                            <ChevronDown className="w-6 h-6 animate-bounce" />
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Footer que es revela en baixar */}

@@ -21,7 +21,7 @@ public class DataIngestionFacade {
     private final MeasurementRepository measurementRepository;
 
 
-    @PostConstruct
+    //@PostConstruct
     public void onStartup() {
 
         log.info("Initializing data ingestion on startup...");

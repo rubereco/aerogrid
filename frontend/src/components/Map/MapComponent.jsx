@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api/axios';
 import StationDetailsPanel from './StationDetailsPanel';
 import DateTimeFilter from './DateTimeFilter';
+import StationPopup from './StationPopup';
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -510,26 +511,12 @@ export default function MapComponent() {
                 )}
 
                 {selectedStation && (
-                    <Popup
-                        longitude={selectedStation.longitude}
-                        latitude={selectedStation.latitude}
-                        anchor="bottom"
+                    <StationPopup
+                        station={selectedStation}
+                        targetTime={targetTime}
                         onClose={() => setSelectedStation(null)}
-                        closeOnClick={false}
-                        className="rounded-lg shadow-lg z-10"
-                    >
-                        <div className="p-2 text-sm text-gray-800">
-                            <h3 className="font-bold text-lg mb-1">{selectedStation.properties.name}</h3>
-                            <p className="mb-1"><span className="font-semibold">Code:</span> {selectedStation.properties.code}</p>
-                            <p className="mb-3"><span className="font-semibold">AQI:</span> {selectedStation.properties.aqi}</p>
-                            <button 
-                                onClick={() => setDetailsStationCode(selectedStation.properties.code)}
-                                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium transition-colors cursor-pointer"
-                            >
-                                View details
-                            </button>
-                        </div>
-                    </Popup>
+                        onViewDetails={(code) => setDetailsStationCode(code)}
+                    />
                 )}
             </Map>
 
