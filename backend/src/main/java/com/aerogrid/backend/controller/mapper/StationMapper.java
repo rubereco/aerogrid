@@ -3,6 +3,7 @@ package com.aerogrid.backend.controller.mapper;
 import com.aerogrid.backend.controller.dto.StationDetailsDto;
 import com.aerogrid.backend.controller.dto.StationMapDto;
 import com.aerogrid.backend.domain.Station;
+import com.aerogrid.backend.repository.projection.StationMapProjection;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -42,6 +43,7 @@ public class    StationMapper {
                 .longitude(station.getLocation() != null ? station.getLocation().getX() : null)
                 .aqi(null)  // Must be set from latest measurement
                 .pollutant(null)  // Must be set from latest measurement
+                .trustScore(station.getTrustScore())
                 .build();
     }
 
@@ -123,6 +125,29 @@ public class    StationMapper {
                 .location(location)
                 .trustScore(dto.getTrustScore() != null ? dto.getTrustScore() : 0)
                 .isActive(dto.getIsActive())
+                .build();
+    }
+
+    /**
+     * Converts a StationMapProjection to StationMapDto.
+     *
+     * @param projection the station map projection to convert
+     * @return the station map DTO
+     */
+    public StationMapDto toMapDto(StationMapProjection projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        return StationMapDto.builder()
+                .id(projection.getId())
+                .code(projection.getCode())
+                .name(projection.getName())
+                .latitude(projection.getLatitude())
+                .longitude(projection.getLongitude())
+                .aqi(projection.getAqi() != null ? projection.getAqi() : 0)
+                .pollutant(projection.getPollutant())
+                .trustScore(projection.getTrustScore() != null ? projection.getTrustScore() : 100)
                 .build();
     }
 }

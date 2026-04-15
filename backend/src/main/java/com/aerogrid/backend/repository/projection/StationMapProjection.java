@@ -8,5 +8,5 @@ public interface StationMapProjection {
     Double getLongitude();
     Integer getAqi();
     String getPollutant();
+    Integer getTrustScore();
 }
-

@@ -33,4 +33,7 @@ public class StationMapDto {
 
     /** Worst pollutant identifier. */
     private String pollutant;
+
+    /** Station trust score. */
+    private Integer trustScore;
 }

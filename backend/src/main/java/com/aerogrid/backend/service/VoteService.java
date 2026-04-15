@@ -156,6 +156,9 @@ public class VoteService {
         }
 
         for (Station s : stations) {
+            if (s.getCode() != null && s.getCode().startsWith("TEST-")) {
+                continue; // Preserva els valors originals de les estacions de prova
+            }
             long totalVotesValue = sumMap.getOrDefault(s.getId(), 0L);
             setTrustScoreBasedOnRules(s, totalVotesValue);
         }

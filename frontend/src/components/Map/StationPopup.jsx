@@ -34,7 +34,10 @@ export default function StationPopup({ station, targetTime, onClose, onViewDetai
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState({ upvotes: 0, downvotes: 0 });
     const [userVote, setUserVote] = useState(null);
-    const aqi = station.properties.aqi || 0;
+    const rawAqi = station.properties.aqi;
+    const aqi = rawAqi !== null && rawAqi !== undefined ? Number(rawAqi) : 0;
+    const rawTrustScore = station.properties.trustScore;
+    const trustScore = rawTrustScore !== null && rawTrustScore !== undefined ? Number(rawTrustScore) : 100;
     const aqiTheme = getAqiDetails(aqi);
     useEffect(() => {
         const fetchDetails = async () => {
@@ -140,6 +143,18 @@ export default function StationPopup({ station, targetTime, onClose, onViewDetai
                             <p className="text-sm text-gray-500 italic text-center py-2">Sense dades per aquest moment.</p>
                         )}
                     </div>
+
+                    {trustScore < 15 && (
+                        <div className="bg-gray-200 border border-dashed border-gray-500 rounded p-2 text-xs font-bold text-gray-800 text-center">
+                            🚨 Crític: Estació de molt baixa fiabilitat
+                        </div>
+                    )}
+                    {trustScore >= 15 && trustScore <= 29 && (
+                        <div className="bg-gray-100 border border-dashed border-gray-400 rounded p-2 text-xs font-semibold text-gray-800 text-center">
+                            ⚠️ Atenció: Estació de baixa fiabilitat
+                        </div>
+                    )}
+
                     <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                         <div className="flex gap-2">
                             <button onClick={() => handleVote('POSITIVE')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${userVote === 'POSITIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>

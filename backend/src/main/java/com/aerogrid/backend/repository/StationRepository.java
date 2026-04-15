@@ -28,7 +28,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
         SELECT s.id as id, s.code as code, s.name as name,
                CAST(ST_Y(s.location) AS double precision) as latitude,
                CAST(ST_X(s.location) AS double precision) as longitude,
-               a.max_aqi as aqi, a.pollutant as pollutant
+               a.max_aqi as aqi, a.pollutant as pollutant, s.trust_score as trustScore
         FROM stations s
         LEFT JOIN LATERAL (
             SELECT max_aqi, pollutant
@@ -75,7 +75,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
         SELECT s.id as id, s.code as code, s.name as name,
                CAST(ST_Y(s.location) AS double precision) as latitude,
                CAST(ST_X(s.location) AS double precision) as longitude,
-               a.max_aqi as aqi, a.pollutant as pollutant
+               a.max_aqi as aqi, a.pollutant as pollutant, s.trust_score as trustScore
         FROM stations s
         LEFT JOIN LATERAL (
             SELECT max_aqi, pollutant
@@ -104,7 +104,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
         SELECT s.id as id, s.code as code, s.name as name,
                CAST(ST_Y(s.location) AS double precision) as latitude,
                CAST(ST_X(s.location) AS double precision) as longitude,
-               a.max_aqi as aqi, a.pollutant as pollutant
+               a.max_aqi as aqi, a.pollutant as pollutant, s.trust_score as trustScore
         FROM stations s
         LEFT JOIN LATERAL (
             SELECT max_aqi, pollutant

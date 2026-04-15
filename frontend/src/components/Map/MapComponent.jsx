@@ -58,7 +58,8 @@ export default function MapComponent() {
                         code: station.code,
                         name: station.name,
                         aqi: station.aqi || 0,
-                        pollutant: station.pollutant
+                        pollutant: station.pollutant,
+                        trustScore: station.trustScore !== undefined ? station.trustScore : 100
                     }
                 }))
             };
@@ -90,7 +91,7 @@ export default function MapComponent() {
                     features: stations.map(station => ({
                         type: 'Feature',
                         geometry: { type: 'Point', coordinates: [station.longitude, station.latitude] },
-                        properties: { id: station.id, code: station.code, name: station.name, aqi: station.aqi || 0, pollutant: station.pollutant }
+                        properties: { id: station.id, code: station.code, name: station.name, aqi: station.aqi || 0, pollutant: station.pollutant, trustScore: station.trustScore !== undefined ? station.trustScore : 100 }
                     }))
                 };
                 setStationsGeoJSON(geojsonData);
@@ -109,10 +110,23 @@ export default function MapComponent() {
         source: 'stations',
         filter: ['!', ['has', 'point_count']],
         paint: {
-            'circle-radius': 10, // Fetus una mica més petits perquè sense número queden millor
+            'circle-radius': [
+                'step',
+                ['to-number', ['get', 'trustScore']],
+                5,
+                15, 7.5,
+                30, 10
+            ],
+            'circle-opacity': [
+                'step',
+                ['to-number', ['get', 'trustScore']],
+                0.6,
+                15, 0.8,
+                30, 1.0
+            ],
             'circle-color': [
                 'step',
-                ['get', 'aqi'],
+                ['to-number', ['get', 'aqi']],
                 '#9ca3af', // Default (0 o sense dades) -> Gris
                 1, '#22c55e', // 1: Good -> Verd
                 2, '#eab308', // 2: Fair -> Groc
@@ -135,7 +149,7 @@ export default function MapComponent() {
             'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 24],
             'circle-color': [
                 'step',
-                ['get', 'max_aqi'],
+                ['%', ['to-number', ['get', 'max_trust_score_aqi']], 10],
                 '#9ca3af',
                 1, '#22c55e',
                 2, '#eab308',
@@ -170,7 +184,7 @@ export default function MapComponent() {
     }), []);
 
     const clusterProperties = useMemo(() => ({
-        max_aqi: ['max', ['get', 'aqi']]
+        max_trust_score_aqi: ['max', ['+', ['*', ['to-number', ['get', 'trustScore']], 10], ['to-number', ['get', 'aqi']]]]
     }), []);
 
     const onMouseEnter = useCallback(() => setCursor('pointer'), []);
