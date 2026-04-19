@@ -59,7 +59,8 @@ export default function MapComponent() {
                         name: station.name,
                         aqi: station.aqi || 0,
                         pollutant: station.pollutant,
-                        trustScore: station.trustScore !== undefined ? station.trustScore : 100
+                        trustScore: station.trustScore !== undefined ? station.trustScore : 100,
+                        sourceType: station.sourceType || 'OFFICIAL'
                     }
                 }))
             };
@@ -91,7 +92,7 @@ export default function MapComponent() {
                     features: stations.map(station => ({
                         type: 'Feature',
                         geometry: { type: 'Point', coordinates: [station.longitude, station.latitude] },
-                        properties: { id: station.id, code: station.code, name: station.name, aqi: station.aqi || 0, pollutant: station.pollutant, trustScore: station.trustScore !== undefined ? station.trustScore : 100 }
+                        properties: { id: station.id, code: station.code, name: station.name, aqi: station.aqi || 0, pollutant: station.pollutant, trustScore: station.trustScore !== undefined ? station.trustScore : 100, sourceType: station.sourceType || 'OFFICIAL' }
                     }))
                 };
                 setStationsGeoJSON(geojsonData);
@@ -101,14 +102,13 @@ export default function MapComponent() {
     }, [targetTime]); // Added targetTime dependency to reload global data when time changes
 
     /**
-     * Style layer for the points (circles).
-     * The circle color is assigned dynamically based on the AQI value using Mapbox GL expressions.
+     * Style layer for OFFICIAL stations (circles).
      */
-    const layerStyle = useMemo(() => ({
+    const layerStyleOfficial = useMemo(() => ({
         id: 'stations-layer',
         type: 'circle',
         source: 'stations',
-        filter: ['!', ['has', 'point_count']],
+        filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'sourceType'], 'CITIZEN']],
         paint: {
             'circle-radius': [
                 'step',
@@ -137,6 +137,51 @@ export default function MapComponent() {
             ],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'
+        }
+    }), []);
+
+    /**
+     * Style layer for CITIZEN stations (triangles using text symbol).
+     */
+    const layerStyleCitizen = useMemo(() => ({
+        id: 'stations-layer-citizen',
+        type: 'symbol',
+        source: 'stations',
+        filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'sourceType'], 'CITIZEN']],
+        layout: {
+            'text-field': '▲',
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-size': [
+                'step',
+                ['to-number', ['get', 'trustScore']],
+                16, // Smaller for low trust
+                15, 20, // Medium
+                30, 26  // Normal
+            ],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true
+        },
+        paint: {
+            'text-color': [
+                'step',
+                ['to-number', ['get', 'aqi']],
+                '#9ca3af',
+                1, '#22c55e',
+                2, '#eab308',
+                3, '#f97316',
+                4, '#ef4444',
+                5, '#a855f7',
+                6, '#881337'
+            ],
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 2,
+            'text-opacity': [
+                'step',
+                ['to-number', ['get', 'trustScore']],
+                0.6,
+                15, 0.8,
+                30, 1.0
+            ]
         }
     }), []);
 
@@ -488,7 +533,7 @@ export default function MapComponent() {
                 mapLib={maplibregl}
                 mapStyle={mapStyle}
                 fadeDuration={0}
-                interactiveLayerIds={['stations-layer', 'clusters-layer', 'clusters-count-layer']}
+                interactiveLayerIds={['stations-layer', 'stations-layer-citizen', 'clusters-layer', 'clusters-count-layer']}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 onClick={onClick}
@@ -520,7 +565,8 @@ export default function MapComponent() {
                     >
                         <Layer {...clusterLayerStyle} />
                         <Layer {...clusterCountLayerStyle} />
-                        <Layer {...layerStyle} />
+                        <Layer {...layerStyleOfficial} />
+                        <Layer {...layerStyleCitizen} />
                     </Source>
                 )}
 

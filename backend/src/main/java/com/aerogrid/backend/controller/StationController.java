@@ -118,6 +118,8 @@ public class StationController {
                             .longitude(p.getLongitude())
                             .aqi(p.getAqi())
                             .pollutant(p.getPollutant())
+                            .trustScore(p.getTrustScore())
+                            .sourceType(p.getSourceType())
                             .build())
                     .toList();
 

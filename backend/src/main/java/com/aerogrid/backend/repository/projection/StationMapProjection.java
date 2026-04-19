@@ -9,4 +9,5 @@ public interface StationMapProjection {
     Integer getAqi();
     String getPollutant();
     Integer getTrustScore();
+    String getSourceType();
 }

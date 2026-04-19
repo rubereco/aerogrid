@@ -36,4 +36,7 @@ public class StationMapDto {
 
     /** Station trust score. */
     private Integer trustScore;
+
+    /** Source type (OFFICIAL or CITIZEN) */
+    private String sourceType;
 }
