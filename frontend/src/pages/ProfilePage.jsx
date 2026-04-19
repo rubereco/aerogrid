@@ -47,6 +47,22 @@ export default function ProfilePage() {
 
         fetchUser();
         fetchMyStations();
+        
+        // Listen to search focus event from FloatingHeader
+        const handleFocusStation = (e) => {
+            const { station } = e.detail;
+            const element = document.getElementById(`station-card-${station.id}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('ring-4', 'ring-blue-400', 'scale-[1.02]');
+                setTimeout(() => {
+                    element.classList.remove('ring-4', 'ring-blue-400', 'scale-[1.02]');
+                }, 1500);
+            }
+        };
+        
+        window.addEventListener('focusProfileStation', handleFocusStation);
+        return () => window.removeEventListener('focusProfileStation', handleFocusStation);
     }, []);
 
     const toggleKeyVisibility = (id) => {
@@ -218,7 +234,7 @@ export default function ProfilePage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {myStations.map(station => (
-                                    <div key={station.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white flex flex-col">
+                                    <div id={`station-card-${station.id}`} key={station.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white flex flex-col transition-all duration-500">
                                         <div className="p-4 flex justify-between items-start border-b border-gray-100 bg-gray-50/50">
                                             {editingStation === station.id ? (
                                                 <div className="flex flex-col gap-2 w-full pr-4">

@@ -1,6 +1,6 @@
 import { Search, Menu, UserCircle, X, ChevronDown, List, LogOut, LayoutDashboard } from 'lucide-react';
 import { useState, useContext, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import api from '../../api/axios';
 
@@ -19,6 +19,15 @@ export default function FloatingHeader() {
     const dropdownRef = useRef(null);
     const searchRef = useRef(null);
     const searchRefMobile = useRef(null);
+    const location = useLocation();
+
+    const isProfilePage = location.pathname === '/profile';
+
+    // Refresh search data when route changes so it fetches the correct stations
+    useEffect(() => {
+        setSearchData(null);
+        setSearchQuery('');
+    }, [location.pathname]);
 
     // Close dropdowns on click outside
     useEffect(() => {
@@ -41,7 +50,8 @@ export default function FloatingHeader() {
         if (searchData || isLoadingSearch) return; // Ja està carregat o carregant
         setIsLoadingSearch(true);
         try {
-            const response = await api.get('/api/v1/stations');
+            const endpoint = isProfilePage && isAuthenticated ? '/api/v1/stations/me' : '/api/v1/stations';
+            const response = await api.get(endpoint);
             setSearchData(response.data);
         } catch (err) {
             console.error('Search data setup failed', err);
@@ -75,10 +85,16 @@ export default function FloatingHeader() {
         setSearchQuery('');
         setSearchResults([]);
         setIsSearchFocused(false);
-        // Llençar un event personalitzat perquè el mapa el reculli
-        window.dispatchEvent(new CustomEvent('flyToStation', {
-            detail: { station }
-        }));
+        // Llençar un event personalitzat
+        if (isProfilePage) {
+            window.dispatchEvent(new CustomEvent('focusProfileStation', {
+                detail: { station }
+            }));
+        } else {
+            window.dispatchEvent(new CustomEvent('flyToStation', {
+                detail: { station }
+            }));
+        }
     };
 
     const handleLogout = () => {
@@ -139,7 +155,7 @@ export default function FloatingHeader() {
                                 window.dispatchEvent(new CustomEvent('clearMapSelection'));
                             }}
                             onChange={handleSearchInput}
-                            placeholder="Cerca estacions per nom o codi..."
+                            placeholder={isProfilePage ? "Cerca les teves estacions..." : "Cerca estacions per nom o codi..."}
                             className="w-full pl-10 pr-4 py-2.5 bg-gray-100/50 hover:bg-gray-100 focus:bg-white border-transparent focus:ring-2 focus:ring-blue-200 rounded-xl outline-none transition-all text-base text-gray-700 placeholder-gray-500 shadow-inner"
                         />
                         {isLoadingSearch && (
