@@ -123,8 +123,8 @@ public class    StationMapper {
                 .name(dto.getName())
                 .municipality(dto.getMunicipality())
                 .location(location)
-                .trustScore(dto.getTrustScore() != null ? dto.getTrustScore() : 0)
-                .isActive(dto.getIsActive())
+                .trustScore(dto.getTrustScore() != null ? dto.getTrustScore() : 50)
+                .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
                 .build();
     }
 

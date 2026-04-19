@@ -24,6 +24,13 @@ public interface StationRepository extends JpaRepository<Station, Long> {
      */
     Optional<Station> findByCode(String code);
 
+    /**
+     * Finds all stations owned by a specific user.
+     * @param owner the user entity
+     * @return list of stations
+     */
+    List<Station> findAllByOwner(com.aerogrid.backend.domain.User owner);
+
     @Query(value = """
         SELECT s.id as id, s.code as code, s.name as name,
                CAST(ST_Y(s.location) AS double precision) as latitude,

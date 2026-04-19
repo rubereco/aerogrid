@@ -11,6 +11,8 @@ import com.aerogrid.backend.repository.projection.StationMapProjection;
 import com.aerogrid.backend.repository.projection.AggregatedMeasurementProjection;
 import com.aerogrid.backend.service.StationService;
 import com.aerogrid.backend.repository.MeasurementRepository;
+import com.aerogrid.backend.repository.StationApiKeyRepository;
+import com.aerogrid.backend.controller.dto.MyStationDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -34,6 +36,40 @@ public class StationController {
     private final StationMapper stationMapper;
     private final StationService stationService;
     private final MeasurementRepository measurementRepository;
+    private final StationApiKeyRepository stationApiKeyRepository;
+
+    /**
+     * Retrieves the stations owned by the currently authenticated user,
+     * including their active API keys.
+     *
+     * @param currentUser the authenticated user
+     * @return list of MyStationDto
+     */
+    @GetMapping("/me")
+    public ResponseEntity<List<MyStationDto>> getMyStations(@AuthenticationPrincipal User currentUser) {
+        try {
+            List<Station> stations = stationRepository.findAllByOwner(currentUser);
+            List<MyStationDto> dtos = stations.stream().map(station -> {
+                String apiKey = stationApiKeyRepository.findActiveKeyByStationId(station.getId())
+                        .map(k -> k.getApiKey())
+                        .orElse(null);
+                
+                return MyStationDto.builder()
+                        .id(station.getId())
+                        .code(station.getCode())
+                        .name(station.getName())
+                        .municipality(station.getMunicipality())
+                        .isActive(station.getIsActive())
+                        .apiKey(apiKey)
+                        .build();
+            }).toList();
+            
+            return ResponseEntity.ok(dtos);
+        } catch (Exception e) {
+            log.error("Error retrieving user's stations", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * Retrieves stations based on filtering criteria.

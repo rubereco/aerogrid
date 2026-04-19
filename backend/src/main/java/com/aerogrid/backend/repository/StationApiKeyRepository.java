@@ -6,6 +6,7 @@ import com.aerogrid.backend.domain.StationApiKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,5 +24,14 @@ public interface StationApiKeyRepository extends JpaRepository<StationApiKey, Lo
      * @return optional containing the station API key if found and active
      */
     @Query("SELECT k FROM StationApiKey k JOIN FETCH k.station WHERE k.apiKey = :apiKey AND k.isActive = true")
-    Optional<StationApiKey> findByApiKey(String apiKey);
+    Optional<StationApiKey> findByApiKey(@Param("apiKey") String apiKey);
+    
+    /**
+     * Finds the active API key for a given station.
+     *
+     * @param stationId the station ID
+     * @return optional containing the API key
+     */
+    @Query("SELECT k FROM StationApiKey k WHERE k.station.id = :stationId AND k.isActive = true")
+    Optional<StationApiKey> findActiveKeyByStationId(@Param("stationId") Long stationId);
 }
