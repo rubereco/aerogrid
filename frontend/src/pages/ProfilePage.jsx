@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, User, Link, Loader2, Eye, EyeOff, Copy, CheckCircle2 } from 'lucide-react';
+import { Mail, User, Link, Loader2, Eye, EyeOff, Copy, CheckCircle2, Edit2, Trash2, Power, PowerOff } from 'lucide-react';
 import api from '../api/axios';
 import FloatingHeader from '../components/UI/FloatingHeader';
 import CreateStationModal from '../components/Map/CreateStationModal';
@@ -15,6 +15,11 @@ export default function ProfilePage() {
     const [visibleKeys, setVisibleKeys] = useState({});
     const [copiedKey, setCopiedKey] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
+    
+    // Edit & delete states
+    const [editingStation, setEditingStation] = useState(null);
+    const [editFormData, setEditFormData] = useState({ name: '', municipality: '' });
+    const [isSaving, setIsSaving] = useState(false);
 
     const fetchMyStations = async () => {
         setStationsLoading(true);
@@ -64,6 +69,54 @@ export default function ProfilePage() {
         setSuccessMessage("Estació creada amb èxit! Ja la pots veure a la teva llista.");
         setTimeout(() => setSuccessMessage(''), 5000);
         fetchMyStations(); // Refresca llista màgicament
+    };
+
+    const handleToggleStatus = async (station) => {
+        if (!window.confirm(`Segur que vols ${station.isActive ? 'desactivar' : 'activar'} l'estació ${station.name}?`)) return;
+        
+        try {
+            await api.put(`/api/v1/stations/${station.id}`, {
+                isActive: !station.isActive
+            });
+            fetchMyStations();
+        } catch (e) {
+            console.error("Error toggling status:", e);
+            alert("No s'ha pogut actualitzar l'estat.");
+        }
+    };
+
+    const handleDelete = async (station) => {
+        if (!window.confirm(`ATENCIÓ: Segur que vols eliminar permanentment l'estació ${station.name}? Aquesta acció no es pot desfer.`)) return;
+        
+        try {
+            await api.delete(`/api/v1/stations/${station.id}`);
+            setSuccessMessage("L'estació ha estat eliminada.");
+            setTimeout(() => setSuccessMessage(''), 5000);
+            fetchMyStations();
+        } catch (e) {
+            console.error("Error deleting station:", e);
+            alert("No s'ha pogut eliminar l'estació.");
+        }
+    };
+
+    const openEdit = (station) => {
+        setEditingStation(station.id);
+        setEditFormData({ name: station.name, municipality: station.municipality });
+    };
+
+    const saveEdit = async (id) => {
+        if (!editFormData.name || !editFormData.municipality) return;
+        setIsSaving(true);
+        try {
+            await api.put(`/api/v1/stations/${id}`, editFormData);
+            setEditingStation(null);
+            fetchMyStations();
+        } catch (e) {
+            console.error("Error updating station:", e);
+            alert("No s'ha pogut guardar l'estació.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (loading) {
@@ -165,17 +218,36 @@ export default function ProfilePage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {myStations.map(station => (
-                                    <div key={station.id} className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors shadow-sm bg-white">
+                                    <div key={station.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white flex flex-col">
                                         <div className="p-4 flex justify-between items-start border-b border-gray-100 bg-gray-50/50">
-                                            <div>
-                                                <h3 className="font-bold text-gray-900">{station.name}</h3>
-                                                <p className="text-xs text-gray-500">{station.municipality} • Codi: <span className="font-mono">{station.code}</span></p>
-                                            </div>
-                                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${station.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                            {editingStation === station.id ? (
+                                                <div className="flex flex-col gap-2 w-full pr-4">
+                                                    <input 
+                                                        type="text" 
+                                                        value={editFormData.name} 
+                                                        onChange={e => setEditFormData({...editFormData, name: e.target.value})} 
+                                                        className="px-2 py-1 text-sm border rounded"
+                                                        placeholder="Nom de l'estació"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={editFormData.municipality} 
+                                                        onChange={e => setEditFormData({...editFormData, municipality: e.target.value})} 
+                                                        className="px-2 py-1 text-sm text-gray-500 border rounded"
+                                                        placeholder="Municipi"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <h3 className="font-bold text-gray-900">{station.name}</h3>
+                                                    <p className="text-xs text-gray-500">{station.municipality} • Codi: <span className="font-mono">{station.code}</span></p>
+                                                </div>
+                                            )}
+                                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full whitespace-nowrap ${station.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                                                 {station.isActive ? 'Activa' : 'Inactiva'}
                                             </span>
                                         </div>
-                                        <div className="p-4 flex flex-col gap-2">
+                                        <div className="p-4 flex flex-col gap-2 flex-grow">
                                             <span className="text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                                 Private API Key
                                             </span>
@@ -208,7 +280,30 @@ export default function ProfilePage() {
                                                     No s'ha trobat cap clau d'API associada.
                                                 </div>
                                             )}
-
+                                        </div>
+                                        
+                                        {/* Actions bar */}
+                                        <div className="bg-gray-50/80 border-t border-gray-100 px-4 py-3 flex gap-2 justify-end">
+                                            {editingStation === station.id ? (
+                                                <>
+                                                    <button onClick={() => setEditingStation(null)} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-md transition-colors" disabled={isSaving}>Cancel·lar</button>
+                                                    <button onClick={() => saveEdit(station.id)} className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center gap-1" disabled={isSaving}>
+                                                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Guardar'}
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button onClick={() => handleToggleStatus(station)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1 border ${station.isActive ? 'text-orange-700 border-orange-200 hover:bg-orange-50 bg-white' : 'text-green-700 border-green-200 hover:bg-green-50 bg-white'}`} title={station.isActive ? 'Desactivar estació' : 'Activar estació'}>
+                                                        {station.isActive ? <><PowerOff size={14} /> Desactivar</> : <><Power size={14} /> Activar</>}
+                                                    </button>
+                                                    <button onClick={() => openEdit(station)} className="px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 bg-white hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1" title="Editar">
+                                                        <Edit2 size={14} /> Editar
+                                                    </button>
+                                                    <button onClick={() => handleDelete(station)} className="px-3 py-1.5 text-xs font-medium text-red-700 border border-red-200 bg-white hover:bg-red-50 rounded-md transition-colors flex items-center gap-1" title="Eliminar">
+                                                        <Trash2 size={14} /> Eliminar
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -227,7 +322,3 @@ export default function ProfilePage() {
         </div>
     );
 }
-
-
-
-

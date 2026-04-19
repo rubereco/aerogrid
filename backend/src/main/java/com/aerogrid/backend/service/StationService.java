@@ -43,4 +43,33 @@ public class StationService {
                 .apiKey(apiKeyString)
                 .build();
     }
+
+    @Transactional
+    public StationDetailsDto updateStation(Long id, StationDetailsDto dto, User user) {
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Station not found"));
+
+        if (station.getOwner() == null || !station.getOwner().getId().equals(user.getId())) {
+            throw new SecurityException("Not authorized to update this station");
+        }
+
+        if (dto.getName() != null) station.setName(dto.getName());
+        if (dto.getMunicipality() != null) station.setMunicipality(dto.getMunicipality());
+        if (dto.getIsActive() != null) station.setIsActive(dto.getIsActive());
+
+        return stationMapper.toDetailsDto(stationRepository.save(station));
+    }
+
+    @Transactional
+    public void deleteStation(Long id, User user) {
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Station not found"));
+
+        if (station.getOwner() == null || !station.getOwner().getId().equals(user.getId())) {
+            throw new SecurityException("Not authorized to delete this station");
+        }
+
+        // Hard delete, assume cascading is handled or no strict measurements link
+        stationRepository.delete(station);
+    }
 }

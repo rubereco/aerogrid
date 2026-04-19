@@ -205,4 +205,39 @@ public class StationController {
         }
 
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<StationDetailsDto> updateStation(
+            @PathVariable Long id,
+            @RequestBody StationDetailsDto stationDetails,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            StationDetailsDto response = stationService.updateStation(id, stationDetails, currentUser);
+            return ResponseEntity.ok(response);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error updating station", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteStation(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        try {
+            stationService.deleteStation(id, currentUser);
+            return ResponseEntity.noContent().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error deleting station", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
