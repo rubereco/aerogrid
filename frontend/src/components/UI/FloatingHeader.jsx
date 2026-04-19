@@ -35,10 +35,12 @@ export default function FloatingHeader() {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDesktopDropdownOpen(false);
             }
-            if (searchRef.current && !searchRef.current.contains(event.target)) {
-                setIsSearchFocused(false);
-            }
-            if (searchRefMobile.current && !searchRefMobile.current.contains(event.target)) {
+
+            const clickInDesktopSearch = searchRef.current && searchRef.current.contains(event.target);
+            const clickInMobileSearch = searchRefMobile.current && searchRefMobile.current.contains(event.target);
+
+            // Només tanquem si el click s'ha fet fora d'AMBDÓS cercadors (escriptori i mòbil)
+            if (!clickInDesktopSearch && !clickInMobileSearch) {
                 setIsSearchFocused(false);
             }
         };
@@ -120,13 +122,50 @@ export default function FloatingHeader() {
                     </Link>
 
                     {/* Mobile Search Bar inline */}
-                    <div className="flex-1 md:hidden relative">
+                    <div className="flex-1 md:hidden relative" ref={searchRefMobile}>
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                         <input
                             type="text"
+                            value={searchQuery}
+                            onFocus={() => {
+                                loadSearchData();
+                                setIsSearchFocused(true);
+                                window.dispatchEvent(new CustomEvent('clearMapSelection'));
+                            }}
+                            onChange={handleSearchInput}
                             placeholder="Cerca..."
                             className="w-full pl-9 pr-3 py-1.5 bg-gray-100/50 hover:bg-gray-100 focus:bg-white border-transparent focus:ring-2 focus:ring-blue-200 rounded-xl outline-none transition-all text-sm text-gray-700 placeholder-gray-500 shadow-inner"
                         />
+                        {isLoadingSearch && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
+                        )}
+
+                        {/* Resultats Mobile */}
+                        {isSearchFocused && searchQuery && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                                {searchResults.length > 0 ? (
+                                    searchResults.map(station => (
+                                        <button
+                                            key={station.code}
+                                            onClick={() => handleStationSelect(station)}
+                                            className="w-full flex items-center justify-between px-3 py-3 hover:bg-blue-50 border-b border-gray-50 last:border-0 transition-colors text-left"
+                                        >
+                                            <div className="overflow-hidden pr-2">
+                                                <div className="text-sm font-semibold text-gray-800 truncate">{station.name}</div>
+                                                <div className="text-xs text-gray-500 truncate">{station.code}</div>
+                                            </div>
+                                            {station.aqi > 0 && (
+                                                <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-600 shrink-0">
+                                                    AQI {station.aqi}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-4 py-4 text-sm text-gray-500 text-center">No hi ha resultats</div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Mobile Hamburger */}
