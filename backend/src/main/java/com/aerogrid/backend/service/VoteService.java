@@ -143,7 +143,7 @@ public class VoteService {
      * Also garbage collects idle API memory rate limiters.
      * </p>
      */
-    @Scheduled(cron = "0 */2 * * * *")
+    //@Scheduled(cron = "0 */2 * * * *")
     @Transactional
     public void recalculateAllTrustScores() {
         log.info("Recalculating all station trust scores...");

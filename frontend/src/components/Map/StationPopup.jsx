@@ -36,14 +36,33 @@ export default function StationPopup({ station, targetTime, onClose, onViewDetai
     const [userVote, setUserVote] = useState(null);
     const rawAqi = station.properties.aqi;
     const aqi = rawAqi !== null && rawAqi !== undefined ? Number(rawAqi) : 0;
-    const rawTrustScore = station.properties.trustScore;
-    const trustScore = rawTrustScore !== null && rawTrustScore !== undefined ? Number(rawTrustScore) : 100;
+    const rawTrustScore = station.properties.trustScore ?? station.trustScore;
+    const [trustScore, setTrustScore] = useState(rawTrustScore !== null && rawTrustScore !== undefined ? Number(rawTrustScore) : 100);
     const aqiTheme = getAqiDetails(aqi);
+
     useEffect(() => {
         const fetchDetails = async () => {
             setLoading(true);
             try {
-                const params = { stationCode: station.properties.code };
+                // Try to get station details first to ensure we have the trustScore
+                try {
+                    const statsRes = await api.get(`/api/v1/stations/${station.properties.code || station.code}`);
+                    setMetrics({
+                        upvotes: statsRes.data.upvotes || 0,
+                        downvotes: statsRes.data.downvotes || 0
+                    });
+                    if (statsRes.data.trustScore !== undefined && statsRes.data.trustScore !== null) {
+                        setTrustScore(Number(statsRes.data.trustScore));
+                    }
+                    const voteRes = await api.get(`/api/v1/stations/${station.properties.id || station.id}/votes/me`).catch(() => null);
+                    if (voteRes && voteRes.data) {
+                        setUserVote(voteRes.data.type);
+                    }
+                } catch (e) {
+                    console.error("Error fetching station stats", e);
+                }
+
+                const params = { stationCode: station.properties.code || station.code };
                 if (targetTime) params.targetTime = targetTime;
                 const res = await api.get('/api/v1/measurements', { params });
                 const mData = res.data;
@@ -62,19 +81,9 @@ export default function StationPopup({ station, targetTime, onClose, onViewDetai
                 } else {
                     setMeasurements([]);
                 }
-                try {
-                    const statsRes = await api.get(`/api/v1/stations/${station.properties.code}`);
-                    setMetrics({
-                        upvotes: statsRes.data.upvotes || 0,
-                        downvotes: statsRes.data.downvotes || 0
-                    });
-                    const voteRes = await api.get(`/api/v1/stations/${station.properties.id}/votes/me`).catch(() => null);
-                    if (voteRes && voteRes.data) {
-                        setUserVote(voteRes.data.type);
-                    }
-                } catch (e) {}
             } catch (err) {
                 console.error("Error fetching popup details", err);
+                setMeasurements([]);
             } finally {
                 setLoading(false);
             }
