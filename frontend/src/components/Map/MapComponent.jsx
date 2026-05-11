@@ -7,6 +7,7 @@ import api from '../../api/axios';
 import StationDetailsPanel from './StationDetailsPanel';
 import DateTimeFilter from './DateTimeFilter';
 import StationPopup from './StationPopup';
+import MapLegend from './MapLegend';
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -579,6 +580,8 @@ export default function MapComponent() {
                     />
                 )}
             </Map>
+
+            <MapLegend />
 
             {detailsStationCode && (
                 <StationDetailsPanel
