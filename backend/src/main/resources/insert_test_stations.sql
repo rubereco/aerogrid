@@ -7,4 +7,4 @@ VALUES
     ('TEST-CRIT-TRUST', 'Estació Crítica Fiabilitat', 'Barcelona', 'CITIZEN', ST_SetSRID(ST_MakePoint(2.18, 41.38), 4326), 10, true)
     ON CONFLICT (code) DO NOTHING;
 
-
+DELETE FROM stations WHERE code IN ('TEST-LOW-TRUST', 'TEST-CRIT-TRUST');

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Activity } from 'lucide-react';
+import { X, Activity, ShieldCheck } from 'lucide-react';
 import api from '../../api/axios';
 import StationChart from './StationChart';
 
@@ -190,11 +190,45 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                                 )}
 
                                 {/* 4. Metadades del Sensor */}
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs font-medium text-gray-500 pt-3 border-t border-gray-200/50">
-                                    <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-gray-200 shadow-sm text-gray-700">
-                                        {stationInfo?.sourceType === 'OFFICIAL' ? '🏛️ Estació Oficial (Generalitat)' : '👤 Sensor Ciutadà'}
-                                    </span>
-                                    <span className="flex items-center gap-1">
+                                <div className="flex flex-col sm:flex-row gap-2 text-xs font-medium text-gray-500 pt-3 border-t border-gray-200/50">
+                                    <div className="flex flex-wrap items-center gap-2 flex-1">
+                                        <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-gray-200 shadow-sm text-gray-700">
+                                            {stationInfo?.sourceType === 'OFFICIAL' ? '🏛️ Estació Oficial (Generalitat)' : '👤 Sensor Ciutadà'}
+                                        </span>
+                                        {(() => {
+                                            const totalVotes = (stationInfo?.upvotes || 0) + (stationInfo?.downvotes || 0);
+                                            const isUnrated = totalVotes < 5;
+                                            const score = stationInfo?.trustScore ?? '--';
+
+                                            let label = 'Molt baixa';
+                                            let color = 'text-red-700';
+                                            if (isUnrated) {
+                                                label = 'Sense valorar';
+                                                color = 'text-gray-500';
+                                            } else if (score >= 80) {
+                                                label = 'Excel·lent';
+                                                color = 'text-green-700';
+                                            } else if (score > 30) {
+                                                label = 'Bona';
+                                                color = 'text-blue-700';
+                                            } else if (score > 15) {
+                                                label = 'Baixa';
+                                                color = 'text-orange-700';
+                                            }
+
+                                            return (
+                                                <span className="group relative flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-gray-200 shadow-sm text-gray-700 cursor-help">
+                                                    <ShieldCheck className={`w-4 h-4 ${color}`} />
+                                                    <span>Fiabilitat: <strong className={color}>{isUnrated ? label : `${score}% (${label})`}</strong></span>
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 bg-gray-800 text-white text-[11px] font-normal leading-tight rounded p-2 shadow-lg z-10">
+                                                        Aquest valor indica el nivell de confiança sobre aquesta estació, calculat segons el seu tipus i els vots de la comunitat. Es requereixen almenys 5 vots.
+                                                        <svg className="absolute text-gray-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xmlSpace="preserve"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                                                    </div>
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
+                                    <span className="flex items-center gap-1 sm:text-right">
                                         Dades actualitzades {latestData.timestamp ? timeAgo(latestData.timestamp) : '--'}
                                     </span>
                                 </div>

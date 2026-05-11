@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -143,24 +144,29 @@ public class VoteService {
      * Also garbage collects idle API memory rate limiters.
      * </p>
      */
-    //@Scheduled(cron = "0 */2 * * * *")
+    @Scheduled(cron = "0 */2 * * * *")
     @Transactional
     public void recalculateAllTrustScores() {
         log.info("Recalculating all station trust scores...");
         List<Station> stations = stationRepository.findAll();
-        List<Object[]> sums = voteRepository.getVoteSumsByStation();
 
-        ConcurrentHashMap<Long, Long> sumMap = new ConcurrentHashMap<>();
-        for (Object[] row : sums) {
-            sumMap.put((Long) row[0], ((Number) row[1]).longValue());
+        LocalDateTime since = LocalDateTime.now().minusMonths(6);
+        List<Object[]> counts = voteRepository.getVoteCountsByStationSince(since);
+
+        ConcurrentHashMap<Long, long[]> countMap = new ConcurrentHashMap<>();
+        for (Object[] row : counts) {
+            Long statId = (Long) row[0];
+            long upvotes = ((Number) row[1]).longValue();
+            long total = ((Number) row[2]).longValue();
+            countMap.put(statId, new long[]{upvotes, total});
         }
 
         for (Station s : stations) {
             if (s.getCode() != null && s.getCode().startsWith("TEST-")) {
                 continue; // Preserva els valors originals de les estacions de prova
             }
-            long totalVotesValue = sumMap.getOrDefault(s.getId(), 0L);
-            setTrustScoreBasedOnRules(s, totalVotesValue);
+            long[] stats = countMap.getOrDefault(s.getId(), new long[]{0L, 0L});
+            setTrustScoreBasedOnRules(s, stats[0], stats[1]);
         }
         stationRepository.saveAll(stations);
         
@@ -171,26 +177,23 @@ public class VoteService {
 
     /**
      * Imposes the baseline boundaries dictating how votes transform into visible percentages.
-     * Baseline starts inherently at exactly 50 points. Every aggregated +1 adds 5 total percentage points.
-     * Official stations categorically cannot fall statistically below 50, unlike citizen stations.
-     * Absolute boundaries lie permanently between 0 and 100.
+     * Uses a strict Minimum Vote Threshold algorithm.
      *
-     * @param s               The station target having calculations applied directly.
-     * @param totalVotesValue The true numeric delta derived from the sum of positives mapped to negatives.
+     * @param s          The station target having calculations applied directly.
+     * @param upvotes    The number of upvotes received in the valid time window.
+     * @param totalVotes The total number of votes received in the valid time window.
      */
-    private void setTrustScoreBasedOnRules(Station s, long totalVotesValue) {
-        int baseScore = 50;
-        int maxMultiplier = 5;
-        int calculated = baseScore + (int) (totalVotesValue * maxMultiplier); // Tweak formula as needed
+    private void setTrustScoreBasedOnRules(Station s, long upvotes, long totalVotes) {
+        int minThreshold = 5;
+        int base = s.getSourceType() == SourceType.OFFICIAL ? 50 : 0;
+        int potential = s.getSourceType() == SourceType.OFFICIAL ? 50 : 100;
 
-        if (calculated > 100) calculated = 100;
-
-        if (s.getSourceType() == SourceType.OFFICIAL && calculated < 50) {
-            calculated = 50;
-        } else if (calculated < 0) {
-            calculated = 0;
+        if (totalVotes < minThreshold) {
+            s.setTrustScore(base);
+        } else {
+            double ratio = (double) upvotes / totalVotes;
+            int calculated = (int) Math.round(base + (potential * ratio));
+            s.setTrustScore(Math.min(100, Math.max(0, calculated)));
         }
-
-        s.setTrustScore(calculated);
     }
 }

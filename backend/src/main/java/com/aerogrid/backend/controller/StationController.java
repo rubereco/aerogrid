@@ -12,6 +12,7 @@ import com.aerogrid.backend.repository.projection.AggregatedMeasurementProjectio
 import com.aerogrid.backend.service.StationService;
 import com.aerogrid.backend.repository.MeasurementRepository;
 import com.aerogrid.backend.repository.StationApiKeyRepository;
+import com.aerogrid.backend.repository.VoteRepository;
 import com.aerogrid.backend.controller.dto.MyStationDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class StationController {
     private final StationService stationService;
     private final MeasurementRepository measurementRepository;
     private final StationApiKeyRepository stationApiKeyRepository;
+    private final VoteRepository voteRepository;
 
     /**
      * Retrieves the stations owned by the currently authenticated user,
@@ -144,7 +146,19 @@ public class StationController {
     public ResponseEntity<StationDetailsDto> getStationDetails(@PathVariable String code) {
         try {
             return stationRepository.findByCode(code)
-                    .map(stationMapper::toDetailsDto)
+                    .map(station -> {
+                        StationDetailsDto dto = stationMapper.toDetailsDto(station);
+                        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMonths(6);
+                        List<Object[]> counts = voteRepository.getVoteCountsForStationSince(station.getId(), since);
+                        if (!counts.isEmpty() && counts.get(0)[0] != null) {
+                            dto.setUpvotes(((Number) counts.get(0)[0]).longValue());
+                            dto.setDownvotes(((Number) counts.get(0)[1]).longValue());
+                        } else {
+                            dto.setUpvotes(0L);
+                            dto.setDownvotes(0L);
+                        }
+                        return dto;
+                    })
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {

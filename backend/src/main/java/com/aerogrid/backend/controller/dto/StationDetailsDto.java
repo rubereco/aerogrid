@@ -48,5 +48,10 @@ public class StationDetailsDto {
 
     /** Timestamp when the station was last updated. */
     private LocalDateTime updatedAt;
-}
 
+    /** Number of positive votes. */
+    private Long upvotes;
+
+    /** Number of negative votes. */
+    private Long downvotes;
+}

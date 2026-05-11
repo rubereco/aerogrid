@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
-import { X, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { X, ThumbsUp, ThumbsDown, Loader2, ShieldCheck } from 'lucide-react';
 import api from '../../api/axios';
 const getAqiDetails = (aqi) => {
     switch (aqi) {
@@ -153,16 +153,34 @@ export default function StationPopup({ station, targetTime, onClose, onViewDetai
                         )}
                     </div>
 
-                    {trustScore < 15 && (
-                        <div className="bg-gray-200 border border-dashed border-gray-500 rounded p-2 text-xs font-bold text-gray-800 text-center">
-                            🚨 Crític: Estació de molt baixa fiabilitat
-                        </div>
-                    )}
-                    {trustScore >= 15 && trustScore <= 29 && (
-                        <div className="bg-gray-100 border border-dashed border-gray-400 rounded p-2 text-xs font-semibold text-gray-800 text-center">
-                            ⚠️ Atenció: Estació de baixa fiabilitat
-                        </div>
-                    )}
+                    {(() => {
+                        const totalVotes = metrics.upvotes + metrics.downvotes;
+                        const isUnrated = totalVotes < 5;
+                        let trustStatus = { label: 'Molt baixa', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' };
+
+                        if (isUnrated) {
+                            trustStatus = { label: 'Sense valorar', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' };
+                        } else if (trustScore >= 80) {
+                            trustStatus = { label: 'Excel·lent', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' };
+                        } else if (trustScore > 30) {
+                            trustStatus = { label: 'Bona', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' };
+                        } else if (trustScore > 15) {
+                            trustStatus = { label: 'Baixa', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
+                        }
+
+                        return (
+                            <>
+                                <div className="flex justify-center mb-1">
+                                    <div className={`flex items-center gap-1.5 px-2.5 py-1 ${trustStatus.bg} border ${trustStatus.border} rounded-full text-xs font-medium shadow-sm transition-colors`}>
+                                        <ShieldCheck size={14} className={trustStatus.color} />
+                                        <span className={trustStatus.color}>
+                                            Fiabilitat: <span className="font-bold">{isUnrated ? trustStatus.label : `${trustScore}% (${trustStatus.label})`}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
 
                     <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                         <div className="flex gap-2">
