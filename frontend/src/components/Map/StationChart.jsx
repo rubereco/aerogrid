@@ -8,11 +8,20 @@ const formatVal = (val) => {
     return Number(Number(val).toFixed(2));
 };
 
-export default function StationChart({ stationCode }) {
+export default function StationChart({ stationCode, onPollutantsChange, latestTimestamp }) {
     const [historyData, setHistoryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [resolution, setResolution] = useState('1D'); // 1D, 1W, 1M, 1Y
+    const [resolution, setResolution] = useState('1D'); // 1D, 1W, 1M, 1Y, Personalitzat
+    const [customStart, setCustomStart] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 2);
+        return d.toISOString().slice(0, 16);
+    });
+    const [customEnd, setCustomEnd] = useState(() => {
+        const d = new Date();
+        return d.toISOString().slice(0, 16);
+    });
 
     useEffect(() => {
         if (!stationCode) return;
@@ -21,38 +30,58 @@ export default function StationChart({ stationCode }) {
             setLoading(true);
             setError(null);
             try {
-                const endDate = new Date();
-                const startDate = new Date();
+                let endDate = latestTimestamp ? new Date(latestTimestamp) : new Date();
+                let startDate = latestTimestamp ? new Date(latestTimestamp) : new Date();
+                let actualResolution = resolution;
 
                 switch (resolution) {
                     case '1D':
                         startDate.setDate(endDate.getDate() - 1);
+                        actualResolution = '1D';
                         break;
                     case '1W':
                         startDate.setDate(endDate.getDate() - 7);
+                        actualResolution = '1W';
                         break;
                     case '1M':
                         startDate.setMonth(endDate.getMonth() - 1);
+                        actualResolution = '1M';
                         break;
                     case '1Y':
                         startDate.setFullYear(endDate.getFullYear() - 1);
+                        actualResolution = '1Y';
                         break;
+                    case 'Personalitzat': {
+                        startDate = new Date(customStart);
+                        endDate = new Date(customEnd);
+                        // Determine resolution based on the time difference
+                        const diffSecs = (endDate.getTime() - startDate.getTime()) / 1000;
+                        const diffDays = diffSecs / (3600 * 24);
+                        if (diffDays <= 3) {
+                            actualResolution = 'HOURLY'; // alias for 1D
+                        } else if (diffDays <= 14) {
+                            actualResolution = 'SIX_HOURS'; // alias for 1W
+                        } else if (diffDays <= 60) {
+                            actualResolution = 'DAILY'; // alias for 1M
+                        } else {
+                            actualResolution = 'WEEKLY'; // alias for 1Y
+                        }
+                        break;
+                    }
                     default:
                         break;
                 }
 
-                // Format per com.aerogrid.backend (Spring ISO util)
                 const formatDateTime = (date) => date.toISOString().split('.')[0];
 
                 const res = await api.get(`/api/v1/stations/${stationCode}/measurements`, {
                     params: {
                         startDate: formatDateTime(startDate),
                         endDate: formatDateTime(endDate),
-                        resolution: resolution
+                        resolution: actualResolution
                     }
                 });
 
-                // Result format: [{ timestamp, pollutant, avgValue, avgAqi }, ...]
                 setHistoryData(res.data);
             } catch (err) {
                 console.error("Error fetching aggregated data: ", err);
@@ -63,7 +92,14 @@ export default function StationChart({ stationCode }) {
         };
 
         fetchAggregatedData();
-    }, [stationCode, resolution]);
+    }, [stationCode, resolution, customStart, customEnd, latestTimestamp]);
+
+    useEffect(() => {
+        if (onPollutantsChange && historyData.length > 0) {
+            const pollSet = new Set(historyData.map(d => d.pollutant));
+            onPollutantsChange(Array.from(pollSet));
+        }
+    }, [historyData, onPollutantsChange]);
 
     const getChartOptions = useMemo(() => {
         if (!historyData || historyData.length === 0) return {};
@@ -89,7 +125,7 @@ export default function StationChart({ stationCode }) {
 
         const timeLabels = sortedTimestamps.map(t => {
             const d = new Date(t);
-            if (resolution === '1D' || resolution === '1W') {
+            if (resolution === '1D' || resolution === '1W' || (resolution === 'Personalitzat' && new Date(customEnd) - new Date(customStart) <= 14 * 24 * 3600 * 1000)) {
                 return d.toLocaleDateString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
             } else {
                 return d.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -109,28 +145,48 @@ export default function StationChart({ stationCode }) {
 
         const pollutants = Object.keys(pollutantsObj);
 
-        // Notificar al pare de quins contaminants hi ha disponibles
-        if (typeof window !== 'undefined' && window.__pollutantsCallback) {
-            window.__pollutantsCallback(pollutants);
-        }
+        // Eliminem el visualMap principal i deixem que ECharts utilitzi la paleta de colors per defecte
+        // Això soluciona el problema de que "totes les línies siguin verdes" facilitant la lectura.
 
-        const seriesData = pollutants.map(pollutant => {
-            return {
+        const ECHARTS_COLORS = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4'];
+
+        const seriesData = [];
+        const visualMaps = [];
+
+        pollutants.forEach((pollutant, i) => {
+            const baseColor = ECHARTS_COLORS[i % ECHARTS_COLORS.length];
+            const data = sortedTimestamps.map(t => pollutantsObj[pollutant][t] != null ? formatVal(pollutantsObj[pollutant][t]) : null);
+
+            // Series 1: The solid zone color (governed by VisualMap)
+            seriesData.push({
                 name: pollutant,
                 type: 'line',
                 smooth: true,
-                data: sortedTimestamps.map(t => pollutantsObj[pollutant][t] != null ? formatVal(pollutantsObj[pollutant][t]) : null)
-            };
-        });
+                symbol: 'none',
+                lineStyle: { width: 3 },
+                data: data
+            });
 
-        const visualMaps = pollutants
-            .map((pollutant, index) => {
-                const thresholds = POLLUTANT_THRESHOLDS[pollutant];
-                if (!thresholds) return null;
+            // Series 2: The dashed base color (not governed by VisualMap)
+            seriesData.push({
+                name: pollutant,
+                type: 'line',
+                smooth: true,
+                symbolSize: 6,
+                itemStyle: { color: baseColor },
+                lineStyle: {
+                    type: [12, 12], // Doubled default dash interval for clearer zebra pattern
+                    width: 3,
+                    color: baseColor
+                },
+                data: data
+            });
 
-                return {
+            const thresholds = POLLUTANT_THRESHOLDS[pollutant];
+            if (thresholds) {
+                visualMaps.push({
                     show: false,
-                    seriesIndex: index,
+                    seriesIndex: i * 2, // The index of Series 1
                     pieces: [
                         { lte: thresholds[0], color: '#10b981' },
                         { gt: thresholds[0], lte: thresholds[1], color: '#facc15' },
@@ -140,9 +196,9 @@ export default function StationChart({ stationCode }) {
                         { gt: thresholds[4], color: '#7e22ce' }
                     ],
                     outOfRange: { color: '#9ca3af' }
-                };
-            })
-            .filter(Boolean);
+                });
+            }
+        });
 
         const mainOptions = {
             tooltip: {
@@ -154,8 +210,11 @@ export default function StationChart({ stationCode }) {
                 padding: 12,
                 formatter: function (params) {
                     let tooltipText = `<div style="font-weight:bold;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px">${params[0].axisValue}</div>`;
+
+                    const seenSeries = new Set();
                     params.forEach(param => {
-                      if (param.value !== null && param.value !== undefined) {
+                      if (!seenSeries.has(param.seriesName) && param.value !== null && param.value !== undefined) {
+                        seenSeries.add(param.seriesName);
                         tooltipText += `
                           <div style="display:flex;justify-content:space-between;align-items:center;min-width:120px;margin:4px 0;">
                             <span>${param.marker} ${param.seriesName}</span>
@@ -266,24 +325,45 @@ export default function StationChart({ stationCode }) {
         };
 
         return { mainOptions, aqiOptions: aqiChartOptions };
-    }, [historyData, resolution]);
+    }, [historyData, resolution, customStart, customEnd]);
 
     return (
         <div className="flex flex-col h-full w-full">
-            <div className="flex gap-2 justify-center mb-4">
-                {['1D', '1W', '1M', '1Y'].map(res => (
-                    <button
-                        key={res}
-                        onClick={() => setResolution(res)}
-                        className={`px-4 py-1 rounded-full text-sm font-medium transition-colors ${
-                            resolution === res 
-                            ? 'bg-blue-600 text-white shadow-md' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                    >
-                        {res}
-                    </button>
-                ))}
+            <div className="flex flex-col md:flex-row gap-2 justify-center mb-4 items-center">
+                <div className="flex gap-2">
+                    {['1D', '1W', '1M', '1Y', 'Personalitzat'].map(res => (
+                        <button
+                            key={res}
+                            onClick={() => setResolution(res)}
+                            className={`px-4 py-1 rounded-full text-sm font-medium transition-colors ${
+                                resolution === res 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                        >
+                            {res}
+                        </button>
+                    ))}
+                </div>
+                {resolution === 'Personalitzat' && (
+                    <div className="flex gap-2 items-center bg-gray-100 rounded-full px-3 py-1 text-sm shadow-inner">
+                        <input
+                            type="datetime-local"
+                            value={customStart}
+                            max={customEnd}
+                            onChange={(e) => setCustomStart(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700"
+                        />
+                        <span className="text-gray-400">fins</span>
+                        <input
+                            type="datetime-local"
+                            value={customEnd}
+                            min={customStart}
+                            onChange={(e) => setCustomEnd(e.target.value)}
+                            className="bg-transparent border-none outline-none text-gray-700"
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 w-full relative min-h-0">

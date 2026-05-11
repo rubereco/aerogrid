@@ -66,17 +66,6 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
     });
 
     useEffect(() => {
-        // Prepare global callback per capturar els contaminants de StationChart
-        window.__pollutantsCallback = (pollutants) => {
-            setDetectedPollutants(pollutants);
-        };
-
-        return () => {
-            delete window.__pollutantsCallback;
-        };
-    }, []);
-
-    useEffect(() => {
         if (!stationCode) return;
 
         const fetchData = async () => {
@@ -88,7 +77,14 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
 
                 // Fetch recent measurements directly to reliably display instant top metrics
                 try {
-                    const mRes = await api.get('/api/v1/measurements', { params: { stationCode } });
+                    const d = new Date();
+                    d.setDate(d.getDate() - 7); // Look back up to 7 days to find the last update
+                    const mRes = await api.get('/api/v1/measurements', {
+                        params: {
+                            stationCode,
+                            from: d.toISOString().split('.')[0]
+                        }
+                    });
                     const mData = mRes.data;
 
                     if (mData && mData.length > 0) {
@@ -238,8 +234,8 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
 
                     {/* Container dels Gràfics */}
                     <div className="flex-1 overflow-y-auto min-h-0 relative bg-gray-50/50">
-                        <StationChart stationCode={stationCode} />
-                        
+                        <StationChart stationCode={stationCode} onPollutantsChange={setDetectedPollutants} latestTimestamp={latestData.timestamp} />
+
                         {/* Informació addicional i llegendes dinamiques */}
                         <div className="p-4 mx-4 mb-4 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
                           <div className="flex items-center gap-2 mb-4">
