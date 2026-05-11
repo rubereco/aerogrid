@@ -68,11 +68,13 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
     useEffect(() => {
         if (!stationCode) return;
 
+        const abortController = new AbortController();
+
         const fetchData = async () => {
             setLoading(true);
             setError(null);
             try {
-                const res = await api.get(`/api/v1/stations/${stationCode}`);
+                const res = await api.get(`/api/v1/stations/${stationCode}`, { signal: abortController.signal });
                 setStationInfo(res.data);
 
                 // Fetch recent measurements directly to reliably display instant top metrics
@@ -83,7 +85,8 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                         params: {
                             stationCode,
                             from: d.toISOString().split('.')[0]
-                        }
+                        },
+                        signal: abortController.signal
                     });
                     const mData = mRes.data;
 
@@ -114,9 +117,11 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
                         setLatestData({ measurements: [], aqi: null, worstPollutant: null, timestamp: null });
                     }
                 } catch (merr) {
+                    if (merr.name === 'CanceledError') return;
                     console.error("No s'han pogut obtenir les mesures recents per la capçalera", merr);
                 }
             } catch (err) {
+                if (err.name === 'CanceledError') return;
                 console.error("Error fetching station details:", err);
                 setError('No s\'ha pogut carregar la informació de l\'estació.');
             } finally {
@@ -125,6 +130,7 @@ export default function StationDetailsPanel({ stationCode, onClose }) {
         };
 
         fetchData();
+        return () => abortController.abort();
     }, [stationCode]);
 
     return (

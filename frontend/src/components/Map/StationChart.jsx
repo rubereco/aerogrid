@@ -26,6 +26,8 @@ export default function StationChart({ stationCode, onPollutantsChange, latestTi
     useEffect(() => {
         if (!stationCode) return;
 
+        const abortController = new AbortController();
+
         const fetchAggregatedData = async () => {
             setLoading(true);
             setError(null);
@@ -79,11 +81,13 @@ export default function StationChart({ stationCode, onPollutantsChange, latestTi
                         startDate: formatDateTime(startDate),
                         endDate: formatDateTime(endDate),
                         resolution: actualResolution
-                    }
+                    },
+                    signal: abortController.signal
                 });
 
                 setHistoryData(res.data);
             } catch (err) {
+                if (err.name === 'CanceledError') return;
                 console.error("Error fetching aggregated data: ", err);
                 setError('No s\'ha pogut carregar l\'històric per aquesta resolució.');
             } finally {
@@ -92,12 +96,18 @@ export default function StationChart({ stationCode, onPollutantsChange, latestTi
         };
 
         fetchAggregatedData();
+        return () => abortController.abort();
     }, [stationCode, resolution, customStart, customEnd, latestTimestamp]);
 
     useEffect(() => {
         if (onPollutantsChange && historyData.length > 0) {
-            const pollSet = new Set(historyData.map(d => d.pollutant));
-            onPollutantsChange(Array.from(pollSet));
+            const newPollutants = Array.from(new Set(historyData.map(d => d.pollutant))).sort();
+            onPollutantsChange(prev => {
+                const prevStr = JSON.stringify([...prev].sort());
+                const newStr = JSON.stringify(newPollutants);
+                if (prevStr === newStr) return prev;
+                return newPollutants;
+            });
         }
     }, [historyData, onPollutantsChange]);
 
