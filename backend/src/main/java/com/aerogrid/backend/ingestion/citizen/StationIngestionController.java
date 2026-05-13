@@ -44,18 +44,18 @@ public class StationIngestionController {
      * Endpoint for uploading measurements via CSV from citizen stations.
      */
     @PostMapping(value = "/csv", consumes = "multipart/form-data")
-    public ResponseEntity<String> ingestCsv(
+    public ResponseEntity<?> ingestCsv(
             @RequestHeader("X-API-KEY") String apiKey,
             @RequestParam("file") MultipartFile file) {
         try {
-            ingestionService.processCsvIngestion(apiKey, file);
-            return ResponseEntity.ok("CSV file accepted and processed");
+            java.util.Map<String, Object> result = ingestionService.processCsvIngestion(apiKey, file);
+            return ResponseEntity.ok(result);
         } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or inactive API Key");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Invalid or inactive API Key"));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid data: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", "Invalid data: " + e.getMessage()));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of("message", "Server error: " + e.getMessage()));
         }
     }
 }

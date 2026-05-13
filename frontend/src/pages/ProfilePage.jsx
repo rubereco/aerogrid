@@ -23,6 +23,7 @@ export default function ProfilePage() {
 
     // CSV states
     const [uploadingId, setUploadingId] = useState(null);
+    const [csvResult, setCsvResult] = useState(null);
     const fileInputRefs = useRef({});
 
     const fetchMyStations = async () => {
@@ -151,19 +152,30 @@ export default function ProfilePage() {
         setUploadingId(station.id);
         const formData = new FormData();
         formData.append("file", file);
+        setCsvResult(null); // Reset previous result
 
         try {
-            await api.post(`/api/v1/ingest/csv`, formData, {
+            const response = await api.post(`/api/v1/ingest/csv`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'X-API-KEY': station.apiKey
                 }
             });
-            setSuccessMessage(`Dades importades correctament a ${station.name}`);
-            setTimeout(() => setSuccessMessage(''), 5000);
+            const data = response.data;
+            if (data.failed > 0) {
+                setCsvResult({ type: 'warning', data });
+            } else {
+                setCsvResult({ type: 'success', data });
+                setSuccessMessage(`Dades importades completament a ${station.name}`);
+                setTimeout(() => setSuccessMessage(''), 5000);
+            }
         } catch (e) {
             console.error("Error uploading CSV:", e);
-            alert("Error a l'importar dades CSV. Comprova el format.");
+            if (e.response?.data?.message) {
+                alert("Error a l'importar dades CSV: " + e.response.data.message);
+            } else {
+                alert("Error a l'importar dades CSV. Comprova que el format i els valors siguin àlids.");
+            }
         } finally {
             setUploadingId(null);
             if (fileInputRefs.current[station.id]) {
@@ -248,6 +260,30 @@ export default function ProfilePage() {
                         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm font-medium mt-6 mb-2 flex items-center gap-2 transition-all">
                             <CheckCircle2 size={18} className="text-green-600" />
                             {successMessage}
+                        </div>
+                    )}
+                    
+                    {csvResult && (
+                        <div className={`mt-6 mb-2 rounded-lg border p-4 shadow-sm text-sm ${csvResult.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800'}`}>
+                            <div className="flex items-center gap-2 font-bold mb-2">
+                                {csvResult.type === 'success' ? <CheckCircle2 size={18} /> : <span className="font-bold text-lg">⚠️</span>}
+                                Resultat de la importació CSV
+                            </div>
+                            <p>Correctes: <strong>{csvResult.data.successful}</strong> registres inserits.</p>
+                            {csvResult.data.failed > 0 && (
+                                <div className="mt-3">
+                                    <p className="font-semibold mb-1 text-red-700">Errors trobats ({csvResult.data.failed} registres omesos):</p>
+                                    <div className="max-h-32 overflow-y-auto bg-white/50 rounded border border-yellow-200 p-2 text-xs font-mono">
+                                        <ul className="list-disc list-inside pl-2">
+                                            {csvResult.data.errors.map((err, idx) => (
+                                                <li key={idx} className="text-red-600">{err}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <p className="mt-2 text-xs opacity-80">Resta de dades processades correctament.</p>
+                                </div>
+                            )}
+                            <button onClick={() => setCsvResult(null)} className="mt-3 text-xs underline hover:no-underline">Tancar</button>
                         </div>
                     )}
 

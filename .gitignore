@@ -24,3 +24,4 @@ Thumbs.db
 /node_modules/
 spain.mbtiles
 backend/citizen-import-example.csv
+backend/bad-csv.csv

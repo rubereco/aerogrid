@@ -7,6 +7,7 @@ import com.aerogrid.backend.ingestion.common.CommonMapper;
 import com.aerogrid.backend.ingestion.common.CommonMeasurementDto;
 import com.aerogrid.backend.ingestion.common.CommonStationDto;
 import com.aerogrid.backend.ingestion.common.DataImportProvider;
+import com.aerogrid.backend.ingestion.common.MeasurementValidator;
 import com.aerogrid.backend.repository.MeasurementRepository;
 import com.aerogrid.backend.repository.StationRepository;
 import com.aerogrid.backend.service.AqiCalculatorService;
@@ -35,6 +36,7 @@ public class GencatImportService implements DataImportProvider {
     private final StationRepository stationRepository;
     private final MeasurementRepository measurementRepository;
     private final AqiCalculatorService aqiCalculatorService;
+    private final MeasurementValidator measurementValidator;
     private final Map<String, Station> stationCache = new HashMap<>();
     private int newStation = 0;
     private int newMeasurement = 0;
@@ -151,6 +153,7 @@ public class GencatImportService implements DataImportProvider {
         if (pollutant == null) return;
 
         try {
+            measurementValidator.validate(pollutant, dto.getValue());
 
             measurementRepository.saveMeasurementNative(
                     station.getId(),
@@ -161,6 +164,8 @@ public class GencatImportService implements DataImportProvider {
             );
             newMeasurement++;
 
+        } catch (IllegalArgumentException e) {
+            log.warn("Skipping measurement for station {}: {}", station.getCode(), e.getMessage());
         } catch (Exception e) {
             log.error("Critical error inserting measurement: {}", e.getMessage());
         }
