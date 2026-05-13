@@ -13,9 +13,9 @@ ON CONFLICT DO NOTHING;
 -- Using dummy votes to ensure ratio makes the station > 80% (Excel·lent)
 INSERT INTO votes (user_id, station_id, vote_value, timestamp)
 VALUES
-    ((SELECT id FROM users WHERE email='test1@aerogrid.com'), 760, -1, NOW()),
-    ((SELECT id FROM users WHERE email='test2@aerogrid.com'), 760, -1, NOW()),
-    ((SELECT id FROM users WHERE email='test3@aerogrid.com'), 760, -1, NOW()),
-    ((SELECT id FROM users WHERE email='test4@aerogrid.com'), 760, -1, NOW()),
-    ((SELECT id FROM users WHERE email='test5@aerogrid.com'), 760, -1, NOW())
+    ((SELECT id FROM users WHERE email='test1@aerogrid.com'), 760, 1, NOW()),
+    ((SELECT id FROM users WHERE email='test2@aerogrid.com'), 760, 1, NOW()),
+    ((SELECT id FROM users WHERE email='test3@aerogrid.com'), 760, 1, NOW()),
+    ((SELECT id FROM users WHERE email='test4@aerogrid.com'), 760, 1, NOW()),
+    ((SELECT id FROM users WHERE email='test5@aerogrid.com'), 760, 1, NOW())
 ON CONFLICT (user_id, station_id) DO UPDATE SET vote_value = EXCLUDED.vote_value;

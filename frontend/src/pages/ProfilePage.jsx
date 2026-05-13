@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Mail, User, Link, Loader2, Eye, EyeOff, Copy, CheckCircle2, Edit2, Trash2, Power, PowerOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Mail, User, Link, Loader2, Eye, EyeOff, Copy, CheckCircle2, Edit2, Trash2, Power, PowerOff, Upload } from 'lucide-react';
 import api from '../api/axios';
 import FloatingHeader from '../components/UI/FloatingHeader';
 import CreateStationModal from '../components/Map/CreateStationModal';
@@ -20,6 +20,10 @@ export default function ProfilePage() {
     const [editingStation, setEditingStation] = useState(null);
     const [editFormData, setEditFormData] = useState({ name: '', municipality: '' });
     const [isSaving, setIsSaving] = useState(false);
+
+    // CSV states
+    const [uploadingId, setUploadingId] = useState(null);
+    const fileInputRefs = useRef({});
 
     const fetchMyStations = async () => {
         setStationsLoading(true);
@@ -132,6 +136,39 @@ export default function ProfilePage() {
             alert("No s'ha pogut guardar l'estació.");
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleFileUpload = async (station, event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+            alert("Si us plau, selecciona un arxiu CSV.");
+            return;
+        }
+
+        setUploadingId(station.id);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            await api.post(`/api/v1/ingest/csv`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'X-API-KEY': station.apiKey
+                }
+            });
+            setSuccessMessage(`Dades importades correctament a ${station.name}`);
+            setTimeout(() => setSuccessMessage(''), 5000);
+        } catch (e) {
+            console.error("Error uploading CSV:", e);
+            alert("Error a l'importar dades CSV. Comprova el format.");
+        } finally {
+            setUploadingId(null);
+            if (fileInputRefs.current[station.id]) {
+                fileInputRefs.current[station.id].value = '';
+            }
         }
     };
 
@@ -309,6 +346,16 @@ export default function ProfilePage() {
                                                 </>
                                             ) : (
                                                 <>
+                                                    <input
+                                                        type="file"
+                                                        accept=".csv"
+                                                        className="hidden"
+                                                        ref={(el) => fileInputRefs.current[station.id] = el}
+                                                        onChange={(e) => handleFileUpload(station, e)}
+                                                    />
+                                                    <button onClick={() => fileInputRefs.current[station.id]?.click()} disabled={uploadingId === station.id} className="px-3 py-1.5 text-xs font-medium text-purple-700 border border-purple-200 bg-white hover:bg-purple-50 rounded-md transition-colors flex items-center gap-1" title="Importar CSV">
+                                                        {uploadingId === station.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Importar
+                                                    </button>
                                                     <button onClick={() => handleToggleStatus(station)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1 border ${station.isActive ? 'text-orange-700 border-orange-200 hover:bg-orange-50 bg-white' : 'text-green-700 border-green-200 hover:bg-green-50 bg-white'}`} title={station.isActive ? 'Desactivar estació' : 'Activar estació'}>
                                                         {station.isActive ? <><PowerOff size={14} /> Desactivar</> : <><Power size={14} /> Activar</>}
                                                     </button>

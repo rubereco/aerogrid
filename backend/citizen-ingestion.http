@@ -1,16 +1,16 @@
 ### Ingest citizen measurement - NO2 (good range <= 40 ug/m3)
 POST http://localhost:8080/api/v1/ingest
-X-API-KEY: sk_b18638c953684f8995fcb96063ad2ba90770f65a-5
+X-API-KEY: sk_bc955e4a013e4ebf950e1873b216b28d395dd547-8
 Content-Type: application/json
 
 {
   "pollutant": "NO2",
-  "value": 23.4
+  "value": 12
 }
 
 ### Ingest citizen measurement - PM10 (good range <= 20 ug/m3)
 POST http://localhost:8080/api/v1/ingest
-X-API-KEY: sk_b18638c953684f8995fcb96063ad2ba90770f65a-5
+X-API-KEY: sk_bc955e4a013e4ebf950e1873b216b28d395dd547-8
 Content-Type: application/json
 
 {

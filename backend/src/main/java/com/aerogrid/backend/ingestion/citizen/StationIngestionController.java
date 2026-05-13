@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/ingest")
@@ -30,6 +31,25 @@ public class StationIngestionController {
             ingestionService.processIngestion(apiKey, dto);
             return ResponseEntity.ok("Data accepted");
 
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or inactive API Key");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid data: " + e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Endpoint for uploading measurements via CSV from citizen stations.
+     */
+    @PostMapping(value = "/csv", consumes = "multipart/form-data")
+    public ResponseEntity<String> ingestCsv(
+            @RequestHeader("X-API-KEY") String apiKey,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            ingestionService.processCsvIngestion(apiKey, file);
+            return ResponseEntity.ok("CSV file accepted and processed");
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or inactive API Key");
         } catch (IllegalArgumentException e) {

@@ -10,8 +10,13 @@ import com.aerogrid.backend.service.AqiCalculatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Service
@@ -57,6 +62,68 @@ public class CitizenIngestionService {
     }
 
     /**
+     * Processes a CSV file ingestion request from a citizen station.
+     * Expected CSV format: pollutant,value,timestamp
+     *
+     * @param apiKey The API key for authentication.
+     * @param file   The CSV file containing measurements.
+     */
+    public void processCsvIngestion(String apiKey, MultipartFile file) {
+        StationApiKey keyEntity = apiKeyRepository.findByApiKey(apiKey)
+                .orElseThrow(() -> new SecurityException("Invalid API Key"));
+
+        if (!keyEntity.isActive()) {
+            throw new SecurityException("API Key is inactive");
+        }
+
+        Station station = keyEntity.getStation();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            boolean isFirstRow = true;
+            while ((line = reader.readLine()) != null) {
+                if (isFirstRow) {
+                    isFirstRow = false;
+                    // Optional: check if header
+                    if (line.toLowerCase().contains("pollutant")) {
+                        continue;
+                    }
+                }
+                if (line.trim().isEmpty()) continue;
+
+                String[] parts = line.split(",");
+                if (parts.length >= 3) {
+                    try {
+                        String pollutantStr = parts[0].trim();
+                        Double value = Double.valueOf(parts[1].trim());
+                        LocalDateTime timestamp = LocalDateTime.parse(parts[2].trim());
+
+                        Pollutant pollutant = commonMapper.mapPollutantString(pollutantStr);
+                        if (pollutant != null) {
+                            Integer aqi = aqiCalculator.calculateAqi(pollutant.name(), value);
+                            measurementRepository.saveMeasurementNative(
+                                    station.getId(),
+                                    pollutant.name(),
+                                    value,
+                                    timestamp,
+                                    aqi
+                            );
+                        } else {
+                            log.warn("Unknown pollutant {} in CSV for station {}", pollutantStr, station.getCode());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error parsing CSV line '{}': {}", line, e.getMessage());
+                        // Continue processing other lines
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error reading CSV file", e);
+            throw new RuntimeException("Error processing CSV: " + e.getMessage());
+        }
+    }
+
+    /**
      * Saves a citizen-submitted measurement to the database.
      *
      * @param station   The station entity.
@@ -70,7 +137,7 @@ public class CitizenIngestionService {
                     station.getId(),
                     pollutant.name(),
                     value,
-                    LocalDateTime.now(),
+                    LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES),
                     aqi
             );
 
